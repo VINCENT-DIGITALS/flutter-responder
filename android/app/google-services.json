@@ -1,0 +1,135 @@
+{
+  "project_info": {
+    "project_number": "676023959863",
+    "firebase_url": "https://bayani-79675-default-rtdb.firebaseio.com",
+    "project_id": "bayani-79675",
+    "storage_bucket": "bayani-79675.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676023959863:android:79e19b2ae13ddf59bb5ab2",
+        "android_client_info": {
+          "package_name": "com.example.administrator"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "676023959863-bv7s5bncl7ojjflb2ratua6ilvob4npt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.administrator",
+            "certificate_hash": "6e62645d24e6bb68b0dafa35f8f4a6f34a4d74c1"
+          }
+        },
+        {
+          "client_id": "676023959863-mj097hfgsee8opi3pbrejv7cg5aoqqbg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM25DVgNTIZqjIkq9WjJfocstGPs72vBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "676023959863-bdg3bl430a091s73csfbaj84h2dgdqat.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "676023959863-dhalc4otjf4fpncfij0pm7d0p12ec4o4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.administrator"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676023959863:android:af0c7dd9fcb205d0bb5ab2",
+        "android_client_info": {
+          "package_name": "com.example.citizen"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "676023959863-nrurkpskvo0ejfifcdsjm8gqg0871u1u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.citizen",
+            "certificate_hash": "6e62645d24e6bb68b0dafa35f8f4a6f34a4d74c1"
+          }
+        },
+        {
+          "client_id": "676023959863-mj097hfgsee8opi3pbrejv7cg5aoqqbg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM25DVgNTIZqjIkq9WjJfocstGPs72vBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "676023959863-bdg3bl430a091s73csfbaj84h2dgdqat.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "676023959863-dhalc4otjf4fpncfij0pm7d0p12ec4o4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.administrator"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:676023959863:android:627bc8cb58cf184dbb5ab2",
+        "android_client_info": {
+          "package_name": "com.example.responder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "676023959863-mj097hfgsee8opi3pbrejv7cg5aoqqbg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM25DVgNTIZqjIkq9WjJfocstGPs72vBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "676023959863-bdg3bl430a091s73csfbaj84h2dgdqat.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "676023959863-dhalc4otjf4fpncfij0pm7d0p12ec4o4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.administrator"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
