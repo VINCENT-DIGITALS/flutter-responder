@@ -1,10 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:responder/pages/chatPages/chat_list.dart';
 
+import '../pages/announcement_page.dart';
 import '../pages/home_page.dart';
+import '../pages/map_page.dart';
 import '../services/database.dart';
 import 'setting.dart';
+
 
 class BottomNavBar extends StatefulWidget {
   final String currentPage;
@@ -23,17 +26,17 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
     switch (page) {
       case 'home':
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => HomePage(currentPage: 'home')),
+              builder: (context) => const HomePage(currentPage: 'home')),
         );
         break;
-      case 'map':
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => MapPage(currentPage: 'map')),
-        // );
+      case 'chats':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ChatListPage(currentPage: 'chats')),
+        );
         break;
       case 'settings':
         showDialog(
@@ -52,8 +55,17 @@ class _BottomNavBarState extends State<BottomNavBar> {
         // Navigator.push(
         //   context,
         //   MaterialPageRoute(
-        //       builder: (context) => ReportPage(currentPage: 'report')),
+        //       builder: (context) =>
+        //           ReportsSummaryPage(currentPage: 'SummaryReport')),
         // );
+        break;
+      case 'announcement':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  AnnouncementsPage(currentPage: 'announcement')),
+        );
         break;
     }
   }
@@ -74,15 +86,15 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.report),
-          label: 'Reports',
+          label: 'Log Book',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.notifications),
           label: 'Updates',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.map),
-          label: 'Map',
+          icon: Icon(Icons.chat),
+          label: 'Chat',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),
@@ -96,11 +108,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
     switch (page) {
       case 'home':
         return 0;
-      case 'report':
+      case 'SummaryReport':
         return 1;
-      case 'update':
+      case 'announcement':
         return 2;
-      case 'map':
+      case 'chats':
         return 3;
       case 'settings':
         return 4;
@@ -117,9 +129,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 1:
         return 'report';
       case 2:
-        return 'update';
+        return 'announcement';
       case 3:
-        return 'map';
+        return 'chats';
       case 4:
         return 'settings';
 

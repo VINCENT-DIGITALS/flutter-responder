@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String uid = 'uid';
@@ -8,6 +10,7 @@ const String phoneNum = 'phoneNum';
 const String createdAt = 'createdAt';
 const String address = 'address';
 const String status = 'status';
+
 
 class SharedPreferencesService {
   static SharedPreferencesService? _instance;

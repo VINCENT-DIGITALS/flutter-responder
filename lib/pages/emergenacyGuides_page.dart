@@ -1,12 +1,11 @@
-
 import 'package:flutter/material.dart';
 
 import '../components/bottom_bar.dart';
 import '../components/custom_drawer.dart';
-import '../safetyGuides/emergencyPreparedness_guide.dart';
-import '../safetyGuides/liveSfaty_guide.dart';
-import '../safetyGuides/naturalDisaster_guide.dart';
-import '../safetyGuides/socialDisaster_guide.dart';
+import 'safetyGuides/emergencyPreparedness_guide.dart';
+import 'safetyGuides/liveSfaty_guide.dart';
+import 'safetyGuides/naturalDisaster_guide.dart';
+import 'safetyGuides/socialDisaster_guide.dart';
 
 class EmergencyGuidesPage extends StatefulWidget {
   @override

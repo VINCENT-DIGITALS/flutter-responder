@@ -11,6 +11,65 @@ class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  final CollectionReference chats =
+      FirebaseFirestore.instance.collection('chats');
+
+// Get chat messages for a specific chat with pagination
+  Stream<QuerySnapshot> getMessages(String chatId, {int limit = 10}) {
+    return chats
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots();
+  }
+
+  Future<String> getDisplayName(DocumentReference senderRef) async {
+    DocumentSnapshot userDoc = await senderRef.get();
+    String collectionName =
+        userDoc.reference.parent.id; // Get the parent collection name
+
+    // Assuming the collection names are 'responders' or 'operators'
+    if (collectionName == 'responders' || collectionName == 'operator') {
+      return userDoc['displayName'] ?? 'Unknown';
+    }
+    return 'Unknown';
+  }
+
+  Future<void> sendMessage(
+      String chatId, String message, String senderId, bool isOperator) async {
+    var timestamp = DateTime.now();
+
+    // Determine the correct user collection based on whether the user is an operator or responder
+    CollectionReference userCollection = isOperator
+        ? FirebaseFirestore.instance.collection('operators')
+        : FirebaseFirestore.instance.collection('responders');
+
+    // Fetch the display name
+    DocumentSnapshot userDoc = await userCollection.doc(senderId).get();
+    String displayName =
+        userDoc['displayName'] ?? 'Unknown'; // Get the display name directly
+
+    var messageData = {
+      'message': message,
+      'sender':
+          userCollection.doc(senderId), // Reference the correct collection
+      'timestamp': timestamp,
+      'seen_by': [], // Initially no one has seen the message
+      'displayName': displayName,
+    };
+
+    await chats.doc(chatId).collection('messages').add(messageData);
+
+    // Update the chat's last message details
+    await chats.doc(chatId).update({
+      'last_message': message,
+      'last_message_time': timestamp,
+      'last_message_sent_by':
+          userCollection.doc(senderId), // Correct reference for sender
+    });
+  }
+
   // Check if user is authenticated
   bool isAuthenticated() {
     return _auth.currentUser != null;
@@ -44,6 +103,12 @@ class DatabaseService {
     return _auth.currentUser;
   }
 
+  // Method to get current user ID
+  String? getCurrentUserId() {
+    User? user = currentUser;
+    return user?.uid; // Return UID if user is logged in, otherwise null
+  }
+
   // Method to fetch current user data once
   Future<Map<String, dynamic>> fetchCurrentUserData() async {
     try {
@@ -69,6 +134,37 @@ class DatabaseService {
     }
   }
 
+// Fetch announcements from Firestore
+  Future<List<Map<String, dynamic>>> getAnnouncements() async {
+    try {
+      QuerySnapshot snapshot = await _db
+          .collection('announcements')
+          .orderBy('timestamp', descending: true)
+          .get();
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print('Error getting announcements: $e');
+      return [];
+    }
+  }
+
+  // Method to fetch the latest 3 announcements from the 'announcements' collection
+  Future<List<Map<String, dynamic>>> getLatestAnnouncements() async {
+    QuerySnapshot snapshot = await _db
+        .collection('announcements')
+        .orderBy('timestamp', descending: true)
+        .limit(3)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data['id'] = doc.id; // Optional: include document ID if needed
+      return data;
+    }).toList();
+  }
+
   // Method to update specific fields of the current user document
   Future<void> updateUserData({
     required Map<String, dynamic> updatedFields,
@@ -79,7 +175,7 @@ class DatabaseService {
         throw Exception('No user is currently signed in');
       }
 
-      final userRef = _db.collection('citizens').doc(user.uid);
+      final userRef = _db.collection('responders').doc(user.uid);
       await userRef.update(updatedFields);
     } catch (e) {
       // Handle errors
@@ -380,8 +476,10 @@ class DatabaseService {
   Future<String?> signInWithEmail(String email, String password) async {
     try {
       // Fetch user document from Firestore
-      final userDoc =
-          _db.collection("citizens").where('email', isEqualTo: email).limit(1);
+      final userDoc = _db
+          .collection("responders")
+          .where('email', isEqualTo: email)
+          .limit(1);
       final docSnapshot = await userDoc.get();
 
       if (docSnapshot.docs.isEmpty) {
@@ -497,5 +595,9 @@ class DatabaseService {
       print('Something went wrong: $e');
       flutterToast('Something went wrong, please try again');
     }
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
   }
 }

@@ -1,17 +1,14 @@
-import 'package:auto_size_text/auto_size_text.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localization/flutter_localization.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../components/loading.dart';
-import '../components/square_tile.dart';
 import '../models/forgot_password.dart';
 import '../services/auth.dart';
 import '../services/database.dart';
-import 'createAcount_page.dart';
+import '/components/my_button.dart';
+import '/components/square_tile.dart';
 import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -26,8 +23,6 @@ class _LoginPageState extends State<LoginPage> {
   // text editing controllers
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  late FlutterLocalization _flutterLocalization;
-  late String _currentLocale;
 
   final _formKey = GlobalKey<FormState>(); // Form key for validation
   // Password visibility
@@ -36,9 +31,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _flutterLocalization = FlutterLocalization.instance;
-    _currentLocale = 'en'; // Set a default value
-    _loadLocale();
   }
 
   // error message
@@ -132,28 +124,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _loadLocale() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? locale = prefs.getString('locale') ?? 'en';
-    setState(() {
-      _currentLocale = locale;
-    });
-    _flutterLocalization.translate(locale);
-  }
-
-  Future<void> _setLocale(String? value) async {
-    if (value == null) return;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('locale', value);
-    setState(() {
-      _currentLocale = value;
-    });
-    _flutterLocalization.translate(value);
-  }
-
   @override
   Widget build(BuildContext context) {
-  
     final screenWidth = MediaQuery.of(context).size.width;
     final containerWidth = screenWidth * 0.8; // 80% of the screen width
     String logoPath = 'lib/images/LOGODESC.png'; // logo
@@ -178,24 +150,6 @@ class _LoginPageState extends State<LoginPage> {
         ),
         centerTitle: false,
         elevation: 2,
-        actions: [
-          DropdownButton<String>(
-            value: _currentLocale,
-            items: const [
-              DropdownMenuItem(
-                value: "en",
-                child: Text("English"),
-              ),
-              DropdownMenuItem(
-                value: "tl",
-                child: Text("Tagalog"),
-              ),
-            ],
-            onChanged: (value) {
-              _setLocale(value);
-            },
-          ),
-        ],
       ),
       backgroundColor: Color.fromARGB(255, 255, 255, 255),
       body: SafeArea(
@@ -291,7 +245,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 children: [
                   AutoSizeText(
-                    'Login Here',
+                    'Login now',
                     maxLines: 2,
                     style: const TextStyle(
                       fontFamily: 'Inter',
@@ -482,7 +436,7 @@ class _LoginPageState extends State<LoginPage> {
                                   );
                                 },
                                 child: Text(
-                                  "Forgot Password?",
+                                  'Forgot Password',
                                   style: const TextStyle(
                                     color: Color.fromARGB(255, 13, 102, 227),
                                     fontSize: 13,
@@ -523,7 +477,7 @@ class _LoginPageState extends State<LoginPage> {
                                   }),
                                 ),
                                 child: Text(
-                                  'Sign In',
+                                  'Login',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -532,48 +486,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(
-                                  0, 10, 0, 0),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => HomePage()),
-                                  );
-                                },
-                                style: ButtonStyle(
-                                  padding: MaterialStateProperty.all(
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 30, vertical: 15),
-                                  ),
-                                  shape: MaterialStateProperty.all(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                  ),
-                                  backgroundColor:
-                                      MaterialStateProperty.resolveWith<Color>(
-                                          (states) {
-                                    if (states
-                                        .contains(MaterialState.pressed)) {
-                                      return Colors.grey[
-                                          700]!; // Color when button is pressed
-                                    }
-                                    return Colors.grey; // Default color
-                                  }),
-                                ),
-                                child: const Text(
-                                  'GUEST',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
+                        
                           ],
                         ),
 
@@ -592,7 +505,7 @@ class _LoginPageState extends State<LoginPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10.0),
                                 child: Text(
-                                  'Or Continue With',
+                                  "Continue With",
                                   style: TextStyle(color: Colors.grey[700]),
                                 ),
                               ),
@@ -628,7 +541,7 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               AutoSizeText(
-                                "Not a Member yet? Ask the Operator",
+                                "Not a member yet",
                                 maxLines: 2,
                                 style: const TextStyle(
                                   fontFamily: 'Inter',

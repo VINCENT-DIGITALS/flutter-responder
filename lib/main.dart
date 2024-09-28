@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_localization/flutter_localization.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
+
 import 'services/auth.dart';
+
 void main() async {
-  await dotenv.load(fileName: '.env');
-  
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('en_PH', null); // Initialize the locale
   await initializeFirebase();
   runApp(
-     const MyApp(),
+    const MyApp(),
   );
 }
 
@@ -37,22 +36,16 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final FlutterLocalization localization = FlutterLocalization.instance;
-
   @override
   void initState() {
     super.initState();
-    
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      supportedLocales: localization.supportedLocales,
-      localizationsDelegates: localization.localizationsDelegates,
       home: const AuthPage(),
     );
   }
 }
-//second dd
