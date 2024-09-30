@@ -107,6 +107,7 @@ class _SettingsWidgetState extends State<SettingsWidget> {
                     // Example logout logic, adjust according to your auth system
                     await _dbService.logout(); // Replace with your logout method
                     // Optionally navigate to the login screen or show a success message
+                    Navigator.of(context).pop();
                   } catch (e) {
                     // Handle error (e.g., show a dialog or a snackbar)
                     print('Logout failed: $e');

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../components/group_setting.dart';
+import '../../components/groupchat_header.dart';
 import '../../services/database.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
 
 class GroupChatPage extends StatefulWidget {
   final String chatId;
+  final String gChatname;
 
-  const GroupChatPage({Key? key, required this.chatId}) : super(key: key);
+  const GroupChatPage({Key? key, required this.chatId,  required this.gChatname}) : super(key: key);
 
   @override
   _GroupChatPageState createState() => _GroupChatPageState();
@@ -23,8 +26,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Group Chat'),
+      appBar: GroupChatHeader(
+        onBackPress: () {
+          Navigator.pop(context); // Navigate back
+        },
+        onSettingsPress: () {
+          openSettings(context, widget.chatId); // Open the settings widget
+        },
+        gChatname: widget.gChatname,
       ),
       body: Column(
         children: [
@@ -196,4 +205,5 @@ class _GroupChatPageState extends State<GroupChatPage> {
       _limit += 10; // Increase limit for the next fetch
     });
   }
+
 }

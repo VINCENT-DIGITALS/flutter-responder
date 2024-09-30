@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:responder/models/splash_screen.dart';
 import 'firebase_options.dart';
-
 import 'services/auth.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('en_PH', null); // Initialize the locale
   await initializeFirebase();
+
   runApp(
     const MyApp(),
   );
@@ -43,9 +45,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const AuthPage(),
+      home: SplashScreen(),
     );
   }
 }
