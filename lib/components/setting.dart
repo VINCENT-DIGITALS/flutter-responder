@@ -1,9 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../pages/emergenacyGuides_page.dart';
 import '../pages/profile_page.dart';
 import '../services/database.dart';
+
+import '../services/foreground_service.dart';
+import '../services/location_service.dart';
+import '../services/notificatoin_service.dart';
+import '../services/shared_pref.dart';
 
 class SettingsWidget extends StatefulWidget {
   @override
@@ -11,15 +16,170 @@ class SettingsWidget extends StatefulWidget {
 }
 
 class _SettingsWidgetState extends State<SettingsWidget> {
-  bool _isDarkMode = false;
-  bool _notificationsEnabled = true;
-  bool _locationBasedServicesEnabled = true;
-  bool _emergencyAlertsEnabled = true;
+  late String _currentLocale;
+  // bool _isDarkMode = false;
+  bool _isNotificationEnabled = false;
+  // bool _locationBasedServicesEnabled = true;
+  // bool _emergencyAlertsEnabled = true;
+  bool _isLocationSharingEnabled = false; // Location sharing state
+
   final DatabaseService _dbService = DatabaseService();
+  final MyForegroundService _foregroundService =
+      MyForegroundService(); // Foreground service
+  final LocationService _locationService = LocationService();
+  final NotificationService _notificationService =
+      NotificationService(); // Instantiate NotificationService
 
   @override
   void initState() {
     super.initState();
+    _currentLocale = 'en'; // Set a default value
+    _loadLocationSharingStateFromDB(); // Load the location sharing state from the database
+    _notificationService.initialize();
+    _loadNotificationPermissionStatus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadNotificationPermissionStatus();
+  }
+
+  // Check if notification permissions are granted and update the toggle accordingly
+  Future<void> _loadNotificationPermissionStatus() async {
+    bool hasPermission =
+        await NotificationService().hasNotificationPermission();
+    setState(() {
+      _isNotificationEnabled = hasPermission;
+    });
+  }
+
+// Handle toggle switch
+  Future<void> _toggleNotification(bool isEnabled) async {
+    if (isEnabled) {
+      // Request permission when enabling notifications
+      bool granted = await _notificationService.requestNotificationPermission();
+      setState(() {
+        _isNotificationEnabled = granted;
+      });
+      if (!granted) {
+        // Show an alert if permission is denied
+        _showPermissionDeniedDialog();
+      }
+    } else {
+      // When disabling notifications, show a confirmation dialog
+      _showDisableNotificationDialog();
+      setState(() {
+        _isNotificationEnabled = false;
+      });
+    }
+  }
+
+// Alert when permission is denied
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Permission Denied'),
+          content: Text(
+              'Notifications are disabled. Please enable them in the app settings.'),
+          actions: [
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Show a dialog when disabling notifications
+  void _showDisableNotificationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Disable Notifications'),
+          content: Text('To disbale it in app permissions.'),
+          actions: [
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
+  // Load location sharing state from the database
+  Future<void> _loadLocationSharingStateFromDB() async {
+    try {
+      // Fetch the user document from Firestore using the method from DatabaseService
+      Map<String, dynamic>? userData = await _dbService.getDocument('citizens');
+
+      if (userData != null && userData.containsKey('locationSharing')) {
+        setState(() {
+          _isLocationSharingEnabled = userData['locationSharing'] as bool;
+        });
+      } else {
+        print("Location sharing value not found in database.");
+      }
+    } catch (e) {
+      print("Error loading location sharing state from database: $e");
+    }
+  }
+
+// Save location sharing state to preferences using SharedPreferencesService
+  Future<void> _setLocationSharingState(bool value) async {
+    SharedPreferencesService prefsService =
+        await SharedPreferencesService.getInstance();
+    prefsService.saveLocationSharing(
+        value); // Use the method from SharedPreferencesService
+  }
+
+// Toggle location sharing
+  Future<void> _toggleLocationSharing(bool value) async {
+    setState(() {
+      _isLocationSharingEnabled = value;
+    });
+
+    await _setLocationSharingState(value);
+
+    if (value) {
+      // Start the foreground service to track location
+      await _foregroundService.startForegroundService();
+
+      // Manually update Firestore with locationSharing = true when toggling on
+      try {
+        // Ensure location permissions are granted
+        bool hasPermission =
+            await _locationService.checkLocationServicesAndPermissions();
+        if (hasPermission) {
+          Position position = await _locationService.getCurrentLocation();
+          GeoPoint location = GeoPoint(position.latitude, position.longitude);
+
+          // Directly update Firestore with location and locationSharing = true
+          await _dbService.updateLocationSharing(
+            location: location,
+            locationSharing: true, // Set locationSharing to true here
+          );
+        }
+      } catch (e) {
+        print('Error updating Firestore when enabling location sharing: $e');
+      }
+    } else {
+      // Stop the foreground service and update location sharing to false
+      await _foregroundService.stopForegroundService();
+    }
   }
 
   @override
@@ -77,45 +237,109 @@ class _SettingsWidgetState extends State<SettingsWidget> {
               },
             ),
 
-            ListTile(
-              leading: Icon(Icons.help_outline_rounded, color: Colors.orange),
-              title: Text('Emergency Guides'),
-              trailing: Icon(Icons.arrow_forward_ios, color: Colors.orange),
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => EmergencyGuidesPage()),
+      
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SwitchListTile(
+                  activeColor: Colors.orange,
+                  title: Row(
+                    children: [
+                      Icon(Icons.notifications, color: Colors.orange),
+                      SizedBox(
+                          width: constraints.maxWidth *
+                              0.02), // Responsive spacing
+                      Flexible(
+                        child: Text(
+                          'Enable Notifications',
+                          style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.width *
+                                0.04, // Responsive text size
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  value: _isNotificationEnabled,
+                  onChanged: (bool value) {
+                    _toggleNotification(value);
+                  },
                 );
               },
             ),
-            // Log out Button
-            SizedBox(height: 16),
-            Center(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.redAccent, // Red button as per the image
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                ),
-                onPressed: () async {
-                  try {
-                    // Example logout logic, adjust according to your auth system
-                    await _dbService.logout(); // Replace with your logout method
-                    // Optionally navigate to the login screen or show a success message
-                    Navigator.of(context).pop();
-                  } catch (e) {
-                    // Handle error (e.g., show a dialog or a snackbar)
-                    print('Logout failed: $e');
-                  }
+
+            // Show Location Sharing Toggle only if the user is authenticated
+            if (_dbService
+                .isAuthenticated()) // Check if the user is authenticated
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SwitchListTile(
+                    activeColor: Colors.orange,
+                    title: Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.orange),
+                        SizedBox(
+                            width: constraints.maxWidth *
+                                0.02), // Responsive spacing
+                        Flexible(
+                          child: Text(
+                            'Location Sharing',
+                            style: TextStyle(
+                              fontSize: MediaQuery.of(context).size.width *
+                                  0.04, // Responsive text size
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    value: _isLocationSharingEnabled,
+                    onChanged: (bool value) {
+                      _toggleLocationSharing(value);
+                    },
+                  );
                 },
-                icon: Icon(Icons.logout, color: Colors.white),
-                label: Text('Log out', style: TextStyle(color: Colors.white)),
               ),
+
+            // Conditional Login/Logout Button
+            Center(
+              child: _dbService.isAuthenticated()
+                  ? ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 12),
+                      ),
+                      onPressed: () async {
+                        try {
+                          await _dbService.signOut();
+                          Navigator.of(context).pop();
+                        } catch (e) {
+                          print('Logout failed: $e');
+                        }
+                      },
+                      icon: Icon(Icons.logout, color: Colors.white),
+                      label: Text('Log out',
+                          style: TextStyle(color: Colors.white)),
+                    )
+                  : ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.greenAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 10),
+                      ),
+                      onPressed: () {
+                        // Navigate to the login screen
+                        _dbService.redirectToLogin(context);
+                      },
+                      icon: Icon(Icons.login, color: Colors.white),
+                      label:
+                          Text('Login', style: TextStyle(color: Colors.white)),
+                    ),
             ),
           ],
         ),

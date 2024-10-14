@@ -4,13 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:responder/models/splash_screen.dart';
 import 'firebase_options.dart';
-import 'services/auth.dart';
+import 'pages/announcement_page.dart';
 import 'dart:async';
+import 'services/notificatoin_service.dart';
+final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('en_PH', null); // Initialize the locale
   await initializeFirebase();
+
+  // Initialize Notification Service for Android
+  await NotificationService().initialize();
 
   runApp(
     const MyApp(),
@@ -48,6 +53,7 @@ class _MyAppState extends State<MyApp> {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: SplashScreen(),
+    
     );
   }
 }

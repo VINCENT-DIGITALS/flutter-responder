@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -7,12 +8,123 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:responder/services/shared_pref.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/firebase_api.dart';
+import '../pages/login_page.dart';
+
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final CollectionReference chats =
       FirebaseFirestore.instance.collection('chats');
+
+  Future<void> saveFcmToken(String userId) async {
+    try {
+      final FirebaseApi firebaseApi = FirebaseApi();
+      await firebaseApi.initNotifications(userId);
+    } catch (e) {
+      print('Failed to save FCM token: $e');
+    }
+  }
+
+  // Fetch logbook data from Firestore
+  Future<void> saveLogBookToFirestore(
+      String logbookId, Map<String, dynamic> logbookData) async {
+    await _db.collection('logBook').doc(logbookId).update({
+      'landmark': logbookData['landmark'],
+      'transportedTo': logbookData['transportedTo'],
+      'incidentType': logbookData['incidentType'],
+      'incident': logbookData['incident'],
+      'incidentDesc': logbookData['incidentDesc'],
+      'victims': logbookData['victims'],
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Save logbook locally to SharedPreferences
+  Future<void> saveLogBookLocally(
+      String logbookId, Map<String, dynamic> logbookData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Get stored logbooks
+    List<String> storedLogbooks = prefs.getStringList('logbooks') ?? [];
+
+    // Encode logbook data
+    logbookData['logbookId'] = logbookId;
+    storedLogbooks.add(jsonEncode(logbookData));
+
+    // Save to SharedPreferences
+    await prefs.setStringList('logbooks', storedLogbooks);
+  }
+
+  // Remove logbook from SharedPreferences after successful Firestore save
+  Future<void> removeLogBookFromLocal(String logbookId) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> storedLogbooks = prefs.getStringList('logbooks') ?? [];
+    storedLogbooks.removeWhere(
+        (logbook) => jsonDecode(logbook)['logbookId'] == logbookId);
+    await prefs.setStringList('logbooks', storedLogbooks);
+  }
+
+// Method to update or create locationSharing, latitude, longitude, and lastUpdated fields
+  Future<void> updateLocationSharing({
+    required GeoPoint location, // Use GeoPoint here
+    required bool locationSharing, // New parameter for locationSharing
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('No user is currently signed in');
+      }
+
+      final userRef = _db.collection('responders').doc(user.uid);
+
+      // Set the locationSharing, location, and lastUpdated fields (creates if not exist)
+      await userRef.set(
+          {
+            'locationSharing': locationSharing, // Enable location sharing
+            'location': location, // Store as GeoPoint
+            'lastUpdated': FieldValue
+                .serverTimestamp(), // Update the last updated timestamp
+          },
+          SetOptions(
+              merge: true)); // Merge to ensure fields are created if not exist
+    } catch (e) {
+      // Handle errors
+      throw Exception('Error updating user location: $e');
+    }
+  }
+
+  /// Method to retrieve a document with dynamic fields
+  Future<Map<String, dynamic>?> getDocument(String collection) async {
+    try {
+      // Ensure the user is authenticated
+      final user = _auth.currentUser;
+      if (user == null) {
+        print("User is not authenticated!");
+        return null;
+      }
+      _checkAuthentication();
+      DocumentSnapshot document =
+          await _db.collection(collection).doc(user.uid).get();
+      if (document.exists) {
+        return document.data() as Map<String, dynamic>?;
+      } else {
+        print("Document does not exist!");
+        return null;
+      }
+    } catch (e) {
+      print("Error fetching document: $e");
+      return null;
+    }
+  }
+
+  void redirectToLogin(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
 
 // Get chat messages for a specific chat with pagination
   Stream<QuerySnapshot> getMessages(String chatId, {int limit = 10}) {
@@ -103,10 +215,51 @@ class DatabaseService {
     return _auth.currentUser;
   }
 
+  // Method to get the current user's document ID and display name
+  Future<Map<String, String?>> getCurrentUserDetails() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      // Query the 'responders' collection where 'uid' matches the current user's UID
+      QuerySnapshot querySnapshot = await _db
+          .collection('responders')
+          .where('uid', isEqualTo: user.uid)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        var responderDoc = querySnapshot.docs.first;
+
+        // Retrieve the Firestore document ID (not the uid) and the display name
+        String documentId = responderDoc.id;
+        String displayName = responderDoc['displayName'] ?? 'Responder';
+
+        print('Document ID: $documentId'); // Log the actual document ID
+        print(
+            'Display Name: $displayName'); // Log the display name for verification
+
+        return {
+          'id': documentId,
+          'name': displayName,
+        };
+      } else {
+        print('No responder document found for UID: ${user.uid}');
+      }
+    }
+    return {
+      'id': null,
+      'name': null
+    }; // Return null values if no document found
+  }
+
   // Method to get current user ID
   String? getCurrentUserId() {
     User? user = currentUser;
     return user?.uid; // Return UID if user is logged in, otherwise null
+  }
+
+  // Method to get current user DisplayName
+  String? getCurrentUserName() {
+    User? user = currentUser;
+    return user?.displayName; // Return UID if user is logged in, otherwise null
   }
 
   // Method to fetch current user data once
@@ -429,7 +582,7 @@ class DatabaseService {
 
       // Fetch user document from Firestore
       final userDoc =
-          _db.collection("citizens").where('email', isEqualTo: email).limit(1);
+          _db.collection("responders").where('email', isEqualTo: email).limit(1);
       final docSnapshot = await userDoc.get();
 
       if (docSnapshot.docs.isEmpty) {
@@ -437,6 +590,7 @@ class DatabaseService {
       }
 
       final userData = docSnapshot.docs.first.data();
+      final documentId = docSnapshot.docs.first.id;
       if (userData['status'] == 'Deactivated') {
         return 'User account is deactivated, contact the operator to activate';
       }
@@ -464,6 +618,9 @@ class DatabaseService {
         'type': userData['type'] ?? '',
         'status': userData['status'] ?? '',
       });
+
+      // Save FCM token
+      await saveFcmToken(documentId);
 
       return null;
     } catch (e) {
@@ -513,6 +670,8 @@ class DatabaseService {
         'type': userData['type'] ?? '',
         'status': userData['status'] ?? '',
       });
+      // Save FCM token
+      await saveFcmToken(documentId);
 
       return null; // Sign-in successful
     } on FirebaseAuthException catch (e) {

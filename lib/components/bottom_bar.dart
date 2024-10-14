@@ -4,6 +4,8 @@ import 'package:responder/pages/chatPages/chat_list.dart';
 
 import '../pages/announcement_page.dart';
 import '../pages/home_page.dart';
+import '../pages/logbook/report_logbook.dart';
+
 import '../pages/map_page.dart';
 import '../services/database.dart';
 import 'setting.dart';
@@ -51,13 +53,13 @@ class _BottomNavBarState extends State<BottomNavBar> {
           },
         );
         break;
-      case 'report':
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //       builder: (context) =>
-        //           ReportsSummaryPage(currentPage: 'SummaryReport')),
-        // );
+      case 'logbook':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  ReportsLogBookPage(currentPage: 'logbook')),
+        );
         break;
       case 'announcement':
         Navigator.push(
@@ -108,7 +110,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     switch (page) {
       case 'home':
         return 0;
-      case 'SummaryReport':
+      case 'logbook':
         return 1;
       case 'announcement':
         return 2;
@@ -127,7 +129,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
       case 0:
         return 'home';
       case 1:
-        return 'report';
+        return 'logbook';
       case 2:
         return 'announcement';
       case 3:
