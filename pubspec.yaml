@@ -62,8 +62,17 @@ dependencies:
   firebase_messaging: ^14.9.4
   flutter_local_notifications: ^17.2.3
   location: ^6.0.2
-
-
+  flutter_dotenv: ^5.2.1
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  dio_cache_interceptor: ^3.5.0
+  flutter_map_tile_caching: ^9.0.1
+  flutter_map_marker_popup: ^6.1.2
+  connectivity_plus: ^6.1.0
+  share_plus: ^10.0.0
+  url_launcher: ^6.3.1
+  video_player: ^2.8.1
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -88,12 +97,9 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
   assets:
+    - .env
     - lib/images/
     - lib/images/LOGODESC.png
     - lib/images/placeholder_image.png
@@ -102,7 +108,7 @@ flutter:
     - assets/images/LOGOAPP.png
     - assets/images/LOGODESC.png
     - assets/images/ICONLAUNCHER.png
-    - .env
+    
 
   # To add assets to your application, add an assets section, like this:
   # assets:

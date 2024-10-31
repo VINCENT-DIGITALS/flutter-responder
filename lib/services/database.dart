@@ -41,6 +41,14 @@ class DatabaseService {
     });
   }
 
+  Future<DocumentSnapshot> getUserDoc(String uid) async {
+    return await _db.collection('responders').doc(uid).get();
+  }
+
+  Future<DocumentSnapshot> getReporterName(String uid) async {
+    return await _db.collection('citizens').doc(uid).get();
+  }
+
   // Save logbook locally to SharedPreferences
   Future<void> saveLogBookLocally(
       String logbookId, Map<String, dynamic> logbookData) async {
@@ -287,28 +295,24 @@ class DatabaseService {
     }
   }
 
-// Fetch announcements from Firestore
-  Future<List<Map<String, dynamic>>> getAnnouncements() async {
-    try {
-      QuerySnapshot snapshot = await _db
-          .collection('announcements')
-          .orderBy('timestamp', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      print('Error getting announcements: $e');
-      return [];
-    }
-  }
-
-  // Method to fetch the latest 3 announcements from the 'announcements' collection
-  Future<List<Map<String, dynamic>>> getLatestAnnouncements() async {
-    QuerySnapshot snapshot = await _db
+  // Fetch announcements as a stream from Firestore
+  Stream<List<Map<String, dynamic>>> getAnnouncementsStream() {
+    return _db
         .collection('announcements')
         .orderBy('timestamp', descending: true)
-        .limit(3)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList());
+  }
+
+  // Method to fetch the latest announcements or features
+  Future<List<Map<String, dynamic>>> getLatestItems(String collection,
+      {int limit = 3}) async {
+    QuerySnapshot snapshot = await _db
+        .collection(collection)
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
         .get();
 
     return snapshot.docs.map((doc) {
@@ -317,7 +321,6 @@ class DatabaseService {
       return data;
     }).toList();
   }
-
   // Method to update specific fields of the current user document
   Future<void> updateUserData({
     required Map<String, dynamic> updatedFields,
@@ -581,8 +584,10 @@ class DatabaseService {
       final email = gUser.email;
 
       // Fetch user document from Firestore
-      final userDoc =
-          _db.collection("responders").where('email', isEqualTo: email).limit(1);
+      final userDoc = _db
+          .collection("responders")
+          .where('email', isEqualTo: email)
+          .limit(1);
       final docSnapshot = await userDoc.get();
 
       if (docSnapshot.docs.isEmpty) {

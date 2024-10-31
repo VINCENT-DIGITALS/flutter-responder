@@ -534,51 +534,6 @@ class _LoginPageState extends State<LoginPage> {
                             ],
                           ),
                         ),
-                        Padding(
-                          padding:
-                              const EdgeInsetsDirectional.fromSTEB(0, 10, 0, 0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AutoSizeText(
-                                "Not a member yet",
-                                maxLines: 2,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  color: Colors.grey,
-                                  fontSize: 10,
-                                  letterSpacing: 0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () {
-                                  // Navigator.push(
-                                  //   context,
-                                  //   MaterialPageRoute(
-                                  //       builder: (context) => RegisterPage()),
-                                  // );
-                                },
-                                child: Row(
-                                  children: [
-                                    AutoSizeText(
-                                      "Register Now",
-                                      maxLines: 2,
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        color: Colors.blue,
-                                        fontSize: 10,
-                                        letterSpacing: 0,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),

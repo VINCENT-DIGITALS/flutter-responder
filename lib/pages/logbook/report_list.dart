@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'dart:async';
 
 import '../../services/database.dart';
+import '../../services/location_service.dart';
+import '../maps/incident_report_map.dart';
 import 'floating_report_detail.dart';
 
 class ReportsListPage extends StatefulWidget {
@@ -22,11 +27,28 @@ class _ReportsListPageState extends State<ReportsListPage> {
   final DatabaseService _dbService = DatabaseService();
   String? _responderId;
   String? _responderName;
+  Position? _currentPosition;
+  final LocationService _locationService =
+      LocationService(); // Instantiate the LocationService
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserDetails();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      Position? position = await _locationService.requestLocation();
+      if (position != null) {
+        setState(() {
+          _currentPosition = position;
+        });
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
   }
 
   Future<void> _fetchCurrentUserDetails() async {
@@ -51,15 +73,21 @@ class _ReportsListPageState extends State<ReportsListPage> {
     }
   }
 
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return 'N/A';
+    final dateTime = timestamp.toDate();
+    return DateFormat('MMMM d, y h:mm a').format(dateTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
           StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance.collection('reports')
-                .orderBy('timestamp', descending: false) // Order by 'timestamp' in ascending order
+            stream: FirebaseFirestore.instance
+                .collection('reports')
+                .orderBy('timestamp', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -88,45 +116,117 @@ class _ReportsListPageState extends State<ReportsListPage> {
                   // Check if the report is already accepted by a responder
                   bool isAccepted = report['acceptedBy'] != null;
 
+                  // Calculate distance if location is available
+                  double? distance;
+                  bool isLocationAvailable = _currentPosition != null;
+                  if (isLocationAvailable && report['location'] is GeoPoint) {
+                    final Distance distanceCalculator = Distance();
+                    final LatLng currentLocation = LatLng(
+                        _currentPosition!.latitude,
+                        _currentPosition!.longitude);
+                    final GeoPoint location =
+                        report['location']; // GeoPoint object
+                    final LatLng evacuationCoords = LatLng(location.latitude,
+                        location.longitude); // Accessing GeoPoint properties
+                    distance = distanceCalculator.as(LengthUnit.Kilometer,
+                        currentLocation, evacuationCoords);
+                  }
+
                   return Card(
                     elevation: 4,
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: InkWell(
-                      onTap: () => _handleReportClick(report, reports[index]),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              report['incidentType'],
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16.0),
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            report['incidentType'],
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                            SizedBox(height: 8),
-                            Text(
-                              report['address'],
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Seriousness: ${report['seriousness']}',
-                              style: TextStyle(color: Colors.red[600]),
-                            ),
-                            SizedBox(height: 8),
-                            if (isAccepted)
-                              Text(
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            _formatTimestamp(report['timestamp']),
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            report['address'],
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Seriousness: ${report['seriousness']}',
+                            style: TextStyle(color: Colors.red[600]),
+                          ),
+                          if (isAccepted)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
                                 'Accepted by: ${report['acceptedBy']}',
                                 style: TextStyle(
                                   color: Colors.green[700],
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize
+                            .min, // Ensures the trailing content doesn't take up unnecessary space
+                        children: [
+                          if (isLocationAvailable)
+                            IconButton(
+                              icon: Icon(
+                                Icons.map,
+                                color: Colors.orange,
+                                size: 30, // Adjust size accordingly
+                              ),
+                              onPressed: () {
+                                if (report['location'] is GeoPoint) {
+                                  GeoPoint geoPoint = report['location'];
+                                  LatLng location = LatLng(
+                                      geoPoint.latitude, geoPoint.longitude);
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => IncidentReportMap(
+                                        locationName: report['address'],
+                                        LocationCoords: location,
+                                        incidentType: report['incidentType'],
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  print('Location is not a GeoPoint');
+                                }
+                              },
+                            ),
+                          if (isLocationAvailable)
+                            Text(
+                              '${distance?.toStringAsFixed(2)} km',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          if (!isLocationAvailable)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.0),
+                            ),
+                        ],
+                      ),
+                      onTap: () => _handleReportClick(report, reports[index]),
                     ),
                   );
+            
+            
                 },
               );
             },
@@ -143,12 +243,12 @@ class _ReportsListPageState extends State<ReportsListPage> {
               _responderId != null &&
               _responderName != null
           ? FloatingReportWidget(
-              report: _currentReport!,
+              reportId: _currentReport!.id, // Pass the report ID here
               responderId: _responderId!,
               responderName: _responderName!,
               onAccept: _acceptReport,
-              onCancel: _cancelReport, // Pass the cancel callback
-              isAccepting: _isAccepting, // Pass the loading state here
+              onCancel: _cancelReport,
+              isAccepting: _isAccepting,
             )
           : null,
     );
@@ -181,52 +281,85 @@ class _ReportsListPageState extends State<ReportsListPage> {
     });
 
     if (_currentReport != null) {
-      // Extract the report data
-      final reportData = _currentReport!.data() as Map<String, dynamic>;
-
-      // Log the report in the logBook collection
-      await FirebaseFirestore.instance.collection('logBook').doc().set({
-        'reportId': _currentReport!.id,
-        'primaryResponderId': _responderId,
-        'primaryResponderDisplayName': _responderName,
-        'timestamp': FieldValue.serverTimestamp(),
-        'location': {
-          'latitude': (reportData['location'] as GeoPoint).latitude,
-          'longitude': (reportData['location'] as GeoPoint).longitude,
-        },
-        'status': 'In Progress',
-        'incident': '',
-        'incidentDesc': reportData['description'],
-        'address': reportData['address'],
-        'landmark': reportData['landmark'] ?? '',
-        'transportedTo': '',
-        'incidentType': reportData['incidentType'],
-        'seriousness': reportData['seriousness'],
-        'mediaUrl': reportData['mediaUrl'] ?? '',
-        'victims': [],
-        'responders': [
-          {'responderId': _responderId},
-        ],
-      });
-
-      // Update the report to mark it as accepted and add the responder's name
-      await FirebaseFirestore.instance
+      final reportRef = FirebaseFirestore.instance
           .collection('reports')
-          .doc(_currentReport!.id)
-          .set({
-        'acceptedBy':
-            _responderName, // Add the acceptedBy field with responder's name
-        'responderId': _responderId,
-        'viewed': true,
-        'lockedBy': _responderId,
-        'status': 'In Progress',
-      }, SetOptions(merge: true));
+          .doc(_currentReport!.id);
 
-      // Show confirmation dialog after successful acceptance
-      _showConfirmationDialog(context, 'Report accepted successfully.');
-      setState(() {
-        _currentReport = null; // Reset the current report
-      });
+      try {
+        // Use Firestore transaction to ensure atomic operation
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          // Get the latest state of the report document
+          DocumentSnapshot snapshot = await transaction.get(reportRef);
+
+          if (snapshot.exists) {
+            final reportData = snapshot.data() as Map<String, dynamic>;
+
+            // Check if the report has already been accepted
+            if (reportData.containsKey('acceptedBy') &&
+                reportData['acceptedBy'] != null) {
+              // If accepted, notify the user and do not overwrite
+              String acceptedBy = reportData['acceptedBy'];
+              _showConfirmationDialog(context,
+                  'This report has already been accepted by $acceptedBy.');
+            } else {
+              // Proceed with accepting the report
+              // Log the report in the logBook collection
+              transaction.set(
+                FirebaseFirestore.instance.collection('logBook').doc(),
+                {
+                  'reportId': _currentReport!.id,
+                  'primaryResponderId': _responderId,
+                  'primaryResponderDisplayName': _responderName,
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'location': {
+                    'latitude': (reportData['location'] as GeoPoint).latitude,
+                    'longitude': (reportData['location'] as GeoPoint).longitude,
+                  },
+                  'status': 'In Progress',
+                  'incident': '',
+                  'incidentDesc': reportData['description'],
+                  'address': reportData['address'],
+                  'landmark': reportData['landmark'] ?? '',
+                  'transportedTo': '',
+                  'incidentType': reportData['incidentType'],
+                  'injuredCount': reportData['injuredCount'],
+                  'seriousness': reportData['seriousness'],
+                  'mediaUrl': reportData['mediaUrl'] ?? '',
+                  'victims': [],
+                  'responders': [
+                    {'responderName': _responderName,
+                    },
+                  ],
+                  'scam': 'Pending',
+                  'reporterId': reportData['reporterId'],
+                },
+              );
+
+              // Update the report to mark it as accepted and add the responder's name
+              transaction.set(
+                reportRef,
+                {
+                  'acceptedBy': _responderName,
+                  'responderId': _responderId,
+                  'viewed': true,
+                  'lockedBy': _responderId,
+                  'status': 'In Progress',
+                },
+                SetOptions(merge: true),
+              );
+
+              // Show confirmation dialog after successful acceptance
+              _showConfirmationDialog(context, 'Report accepted successfully.');
+              setState(() {
+                _currentReport = null; // Reset the current report
+              });
+            }
+          }
+        });
+      } catch (e) {
+        // Handle any errors during the transaction
+        _showConfirmationDialog(context, 'Failed to accept the report.');
+      }
     }
 
     setState(() {

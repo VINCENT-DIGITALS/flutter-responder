@@ -39,12 +39,16 @@ Future<void> _uploadLogbook(Map<String, dynamic> logbook) async {
         .get();
 
     if (logbookDoc.exists) {
-      Timestamp updatedAt = logbookDoc['updatedAt'];
+      // Safely retrieve the updatedAt field, allowing for null values
+      Timestamp? updatedAt = logbookDoc['updatedAt'] as Timestamp?;
       DateTime createdLocallyAt = DateTime.parse(logbook['createdLocallyAt']);
 
-      // Check if local logbook is more recent
-      if (createdLocallyAt.isAfter(updatedAt.toDate())) {
-        // Upload to Firestore
+      // Print values for debugging
+      print('updatedAt: $updatedAt');
+      print('createdLocallyAt: $createdLocallyAt');
+
+      if (updatedAt == null || createdLocallyAt.isAfter(updatedAt.toDate())) {
+        // Upload to Firestore if there is no updatedAt or if local logbook is more recent
         await FirebaseFirestore.instance
             .collection('logBook')
             .doc(logbookId)
@@ -59,16 +63,14 @@ Future<void> _uploadLogbook(Map<String, dynamic> logbook) async {
           'updatedAt': FieldValue.serverTimestamp(), // Update timestamp
         });
 
-        // Check if 'reportId' exists in the logbook document
+        // If 'reportId' exists, update the corresponding report's status
         if (logbook['reportId'] != null) {
           String reportId = logbook['reportId'];
-
-          // Update the status of the corresponding report
           await FirebaseFirestore.instance
               .collection('reports')
               .doc(reportId)
               .update({
-            'status': logbook['status'], // Update the status of the report
+            'status': logbook['status'],
             'updatedAt': FieldValue.serverTimestamp(),
           });
         }

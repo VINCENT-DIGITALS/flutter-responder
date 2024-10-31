@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../logbook/logbook_widgets/buildTextField.dart';
+import '../../services/database.dart';
+import 'logbook_widgets/build_dropdownField.dart';
 
 class FloatingLogBookEditWidget extends StatefulWidget {
   final DocumentSnapshot logbook;
@@ -16,7 +22,8 @@ class FloatingLogBookEditWidget extends StatefulWidget {
       _FloatingLogBookEditWidgetState();
 }
 
-class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
+class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
+    with WidgetsBindingObserver {
   final TextEditingController _landmarkController = TextEditingController();
   final TextEditingController _transportedToController =
       TextEditingController();
@@ -24,17 +31,28 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
   final TextEditingController _incidentController = TextEditingController();
   final TextEditingController _incidentDescController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-
+  TextEditingController reporterNameController = TextEditingController();
+  List<Map<String, dynamic>> _vehicles = []; // List to hold vehicle details
   List<Map<String, dynamic>> _victims = [];
+  List<Map<String, dynamic>> _responders = [];
   String? _status; // Add this variable to store the status
+  String? _scam;
+  String? reporterName;
+  String? reportnerId;
   bool _isSaving = false;
   Timestamp? _timestamp; // To store the Firestore timestamp
   Timestamp? _updatedAt; // To store the updatedAt timestamp
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return 'N/A';
+    final dateTime = timestamp.toDate();
+    return DateFormat('MMMM d, y h:mm a').format(dateTime);
+  }
 
+  final DatabaseService _dbService = DatabaseService();
   @override
   void initState() {
     super.initState();
-
+    WidgetsBinding.instance.addObserver(this);
     // Safely check if the 'status' field exists or set default value
     final logbookData = widget.logbook.data() as Map<String, dynamic>?;
 
@@ -51,9 +69,33 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
     _status = logbookData != null && logbookData.containsKey('status')
         ? widget.logbook['status']
         : 'In Progress';
+    _scam = logbookData != null && logbookData.containsKey('scam')
+        ? widget.logbook['scam']
+        : 'Pending';
+    reportnerId = logbookData != null && logbookData.containsKey('reporterId')
+        ? widget.logbook['reporterId']
+        : 'Unknown';
     // Store the timestamps
     _timestamp = logbookData?['timestamp'];
     _updatedAt = logbookData?['updatedAt'];
+
+    // Load vehicles if the field exists
+    if (logbookData != null && logbookData.containsKey('vehicles')) {
+      _vehicles = List<Map<String, dynamic>>.from(logbookData['vehicles']);
+
+      for (var vehicle in _vehicles) {
+        vehicle['vehicleType'] ??= ''; // Default value if missing
+      }
+    } else {
+      _vehicles = [];
+    }
+
+// Ensure default values for each vehicle
+    for (var vehicle in _vehicles) {
+      vehicle['vehicleType'] ??=
+          ''; // Set default value if vehicleType is missing
+    }
+
     // Load victims if available
     if (widget.logbook['victims'] != null) {
       _victims = List<Map<String, dynamic>>.from(widget.logbook['victims']);
@@ -66,6 +108,34 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
         victim['address'] ??= '';
         victim['injury'] ??= '';
       }
+    }
+    // Load responders if available
+    if (widget.logbook['responders'] != null) {
+      _responders =
+          List<Map<String, dynamic>>.from(widget.logbook['responders']);
+
+      // Ensure default values for each responder
+      for (var responder in _responders) {
+        responder['responderName'] ??= '';
+      }
+    }
+
+    if (reportnerId != null) {
+      getReporterDisplayName(reportnerId);
+    }
+  }
+
+  void getReporterDisplayName(String? reporterId) async {
+    // Call the getUserDoc function and wait for the DocumentSnapshot
+    DocumentSnapshot userDoc = await _dbService.getReporterName(reporterId!);
+
+    // Check if the document exists
+    if (userDoc.exists) {
+      // Access the displayName field
+      reporterNameController.text = userDoc.get('displayName');
+      print('Reporter Name: $reporterName');
+    } else {
+      print('No user found for the given reporterId.');
     }
   }
 
@@ -81,8 +151,11 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
       'incident': _incidentController.text,
       'incidentDesc': _incidentDescController.text,
       'victims': _victims,
+      'vehicles': _vehicles,
+      'responders': _responders,
       'reportId': widget.logbook['reportId'],
       'status': _status, // Add the status field here
+      'scam': _scam,
       'address': _addressController.text, // Add address field here
       'createdLocallyAt':
           DateTime.now().toIso8601String(), // Use DateTime for local storage()
@@ -118,7 +191,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
     });
 
     try {
-      // Update the logbook in Firestore
+      // Attempt to update the logbook in Firestore with a timeout
       await FirebaseFirestore.instance
           .collection('logBook')
           .doc(widget.logbook.id)
@@ -129,44 +202,85 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
         'incident': _incidentController.text,
         'incidentDesc': _incidentDescController.text, // New field
         'victims': _victims,
+        'vehicles': _vehicles,
+        'responders': _responders,
         'status': _status, // Add the status field here
+        'scam': _scam,
         'address': _addressController.text, // Add address field here
         'updatedAt': FieldValue.serverTimestamp(), // New field to track updates
-      });
+      }).timeout(const Duration(seconds: 5)); // Timeout after 5 seconds
 
       // Check if 'reportId' exists in the logbook document
       if (widget.logbook['reportId'] != null) {
         String reportId = widget.logbook['reportId'];
 
-        // Update the status of the corresponding report
+        // Update the status of the corresponding report with a timeout
         await FirebaseFirestore.instance
             .collection('reports')
             .doc(reportId)
             .update({
           'status': _status, // Update the status of the report
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }).timeout(const Duration(seconds: 10)); // Timeout after 10 seconds
       }
 
-      // // Delete the logbook from shared preferences upon successful update
-      // SharedPreferences prefs = await SharedPreferences.getInstance();
-      // List<String> storedLogbooks = prefs.getStringList('logbooks') ?? [];
-      // storedLogbooks.removeWhere(
-      //     (logbook) => jsonDecode(logbook)['logbookId'] == widget.logbook.id);
-      // await prefs.setStringList('logbooks', storedLogbooks);
+      widget.onSave(); // Callback to notify parent widget
 
+      // Firestore save successful, delete the locally saved logbook
+      // Delete the logbook from shared preferences upon successful update
+
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Logbook saved successfully.'),
+        backgroundColor: Colors.green,
+      ));
+    } on TimeoutException catch (_) {
+      // Save locally first to ensure data persistence
+      await _saveLogBookLocally();
+      // If a timeout occurs, notify the user and keep the local save
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text('Network timeout. Data saved locally; Upload it again later.'),
+        backgroundColor: Colors.green,
+      ));
       widget.onSave(); // Callback to notify parent widget
     } catch (e) {
+      // Save locally first to ensure data persistence
       await _saveLogBookLocally();
+      // Catch other Firestore errors
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to save. Will retry later.'),
+        content: Text(
+            'Failed to sync with Firestore. Local save, Upload it again later.'),
         backgroundColor: Colors.red,
       ));
     } finally {
+   
       setState(() {
         _isSaving = false;
       });
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Implement autosave logic here
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _saveLogBookToFirestore(); // Autosave if the app is backgrounded
+    }
+  }
+
+  // Methods to add and remove vehicles
+  void _addVehicle() {
+    setState(() {
+      _vehicles.add({'vehicleType': 'Single'}); // Default vehicle type
+    });
+  }
+
+  void _removeVehicle(int index) {
+    setState(() {
+      _vehicles.removeAt(index);
+    });
   }
 
   void _addVictim() {
@@ -177,6 +291,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
         'sex': 'Other', // Default to 'Male' or any valid option
         'address': '',
         'injury': '',
+        'lifeStatus': 'Injured',
       });
     });
   }
@@ -184,6 +299,20 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
   void _removeVictim(int index) {
     setState(() {
       _victims.removeAt(index);
+    });
+  }
+
+  void _addResponder() {
+    setState(() {
+      _responders.add({
+        'responderName': '',
+      });
+    });
+  }
+
+  void _removeResponder(int index) {
+    setState(() {
+      _responders.removeAt(index);
     });
   }
 
@@ -226,37 +355,49 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
 
                     // Display Created At and Updated At timestamps
                     Text(
-                      'Created At: ${_timestamp != null ? _timestamp!.toDate().toString() : 'Unknown'}',
+                      'Created At: ${_formatTimestamp(_timestamp)}',
                       style: TextStyle(
                           color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Last Updated At: ${_updatedAt != null ? _updatedAt!.toDate().toString() : 'Unknown'}',
+                      'Last Updated At: ${_formatTimestamp(_updatedAt)}',
                       style: TextStyle(
                           color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 12),
-                    _buildTextField('Address', _addressController),
+                    buildTextField('Reporter Name', reporterNameController,
+                        readOnly: true),
                     SizedBox(height: 12),
-                    _buildTextField('Landmark', _landmarkController),
+                    buildTextField('Address', _addressController,
+                        readOnly: true),
                     SizedBox(height: 12),
-                    _buildTextField('Incident Type', _incidentTypeController),
+                    buildTextField('Landmark', _landmarkController),
                     SizedBox(height: 12),
-                    _buildTextField('Incident', _incidentController),
+                    buildTextField('Incident Type', _incidentTypeController),
                     SizedBox(height: 12),
-                    _buildTextField(
+                    buildTextField('Incident', _incidentController),
+                    SizedBox(height: 12),
+                    buildTextField(
                         'Incident Description', _incidentDescController),
                     SizedBox(height: 12),
-                    _buildTextField('Transported To', _transportedToController),
+                    buildTextField('Transported To', _transportedToController),
                     SizedBox(height: 12),
                     // Status Dropdown
-                    _buildDropdownField(
+                    buildDropdownField(
                         'Status', ['In Progress', 'Completed'], _status, (val) {
                       setState(() {
                         _status = val ?? 'In Progress';
+                      });
+                    }),
+                    SizedBox(height: 12),
+                    buildDropdownField(
+                        'Legibility', ['Pending', 'Scam', 'Legit'], _scam,
+                        (val) {
+                      setState(() {
+                        _scam = val ?? 'Pending';
                       });
                     }),
                   ],
@@ -265,8 +406,119 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
             ),
 
             SizedBox(height: 16),
+            // Vehicle Section
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Vehicles Involved',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 12),
 
-            // Victims Section
+                    // List of vehicles
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _vehicles.length,
+                      itemBuilder: (context, index) {
+                        Map<String, dynamic> vehicle = _vehicles[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Vehicle ${index + 1}',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Colors.red),
+                                        onPressed: () => _removeVehicle(index),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+
+                                  // Dropdown for vehicle type
+                                  DropdownButtonFormField<String>(
+                                    value: vehicle['vehicleType'],
+                                    decoration: InputDecoration(
+                                      labelText: 'Vehicle Type',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: [
+                                      'Single',
+                                      'Tricycle',
+                                      'E-bike',
+                                      '4 Wheels',
+                                      'Truck',
+                                      'Other',
+                                    ]
+                                        .map((type) => DropdownMenuItem(
+                                              value: type,
+                                              child: Text(type),
+                                            ))
+                                        .toList(),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        vehicle['vehicleType'] = val ?? '';
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    SizedBox(height: 8),
+
+                    // Add Vehicle Button
+                    ElevatedButton.icon(
+                      onPressed: _addVehicle,
+                      icon: Icon(Icons.add),
+                      label: Text('Add Vehicle'),
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            SizedBox(height: 16),
+
+// Victims Section
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
@@ -321,19 +573,19 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
                                     ],
                                   ),
                                   SizedBox(height: 12),
-                                  _buildTextField(
+                                  buildTextField(
                                     'Name',
                                     TextEditingController(text: victim['name']),
                                     onChanged: (val) => victim['name'] = val,
                                   ),
                                   SizedBox(height: 12),
-                                  _buildTextField(
+                                  buildTextField(
                                     'Age',
                                     TextEditingController(text: victim['age']),
                                     onChanged: (val) => victim['age'] = val,
                                   ),
                                   SizedBox(height: 12),
-                                  _buildDropdownField(
+                                  buildDropdownField(
                                     'Sex',
                                     ['Male', 'Female', 'Other'],
                                     victim['sex'],
@@ -341,18 +593,26 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
                                         setState(() => victim['sex'] = val),
                                   ),
                                   SizedBox(height: 12),
-                                  _buildTextField(
+                                  buildTextField(
                                     'Address',
                                     TextEditingController(
                                         text: victim['address']),
                                     onChanged: (val) => victim['address'] = val,
                                   ),
                                   SizedBox(height: 12),
-                                  _buildTextField(
+                                  buildTextField(
                                     'Injury',
                                     TextEditingController(
                                         text: victim['injury']),
                                     onChanged: (val) => victim['injury'] = val,
+                                  ),
+                                  SizedBox(height: 12),
+                                  buildDropdownField(
+                                    'lifeStatus', // New dropdown for condition
+                                    ['Injured', 'Dead'],
+                                    victim['lifeStatus'],
+                                    (val) => setState(
+                                        () => victim['lifeStatus'] = val),
                                   ),
                                 ],
                               ),
@@ -379,58 +639,181 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
                 ),
               ),
             ),
+            SizedBox(height: 16),
+
+            // Responder Section
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Responders',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 12),
+
+                    // List of responders
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _responders.length,
+                      itemBuilder: (context, index) {
+                        Map<String, dynamic> responder = _responders[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        index == 0
+                                            ? 'Main Responder'
+                                            : 'Responder ${index + 1}',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                      // Show delete button only if the index is greater than 0
+                                      if (index > 0)
+                                        IconButton(
+                                          icon: Icon(Icons.delete,
+                                              color: Colors.red),
+                                          onPressed: () =>
+                                              _removeResponder(index),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  buildTextField(
+                                    'Name',
+                                    TextEditingController(
+                                        text: responder['responderName']),
+                                    onChanged: (val) =>
+                                        responder['responderName'] = val,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: _addResponder,
+                      icon: Icon(Icons.add),
+                      label: Text('Add Responder'),
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
             SizedBox(height: 16),
 
-            // Save Button
-            _isSaving
-                ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _saveLogBookToFirestore,
-                    child: Text('Save'),
-                    style: ElevatedButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                      textStyle: TextStyle(fontSize: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+            // Save and Cancel Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Cancel Button
+                ElevatedButton(
+                  onPressed: () async {
+                    // Show confirmation dialog
+                    bool? confirmCancel = await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Cancel Changes'),
+                        content: Text(
+                            'Are you sure you want to discard your changes?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(context, false), // Cancel dialog
+                            child: Text(
+                              'No',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(context, true), // Confirm cancel
+                            child: Text(
+                              'Yes',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
                       ),
+                    );
+
+                    if (confirmCancel == true) {
+                      Navigator.pop(
+                          context); // Close the bottom sheet if confirmed
+                    }
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                        color: Colors.white), // Set text color to white
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    textStyle: TextStyle(fontSize: 16),
+                    backgroundColor:
+                        Colors.red, // Set a distinct color for Cancel button
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
+                ),
+
+                SizedBox(width: 16), // Spacing between buttons
+
+                // Save Button
+                _isSaving
+                    ? CircularProgressIndicator()
+                    : ElevatedButton(
+                        onPressed: _saveLogBookToFirestore,
+                        child: Text('Save'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 24),
+                          textStyle: TextStyle(fontSize: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+              ],
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller,
-      {Function(String)? onChanged}) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(),
-      ),
-    );
-  }
-
-  Widget _buildDropdownField(String label, List<String> items, String? value,
-      ValueChanged<String?> onChanged) {
-    return DropdownButtonFormField<String>(
-      value: value ??
-          items.first, // Set the first item as default if value is null
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(),
-      ),
-      items: items.map((item) {
-        return DropdownMenuItem<String>(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
-      onChanged: onChanged,
     );
   }
 
@@ -441,6 +824,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget> {
     _incidentTypeController.dispose();
     _incidentController.dispose();
     _incidentDescController.dispose();
+    WidgetsBinding.instance.removeObserver(this); // Remove the observer
     super.dispose();
   }
 }

@@ -11,6 +11,7 @@ import '../components/custom_drawer.dart';
 import '../services/database.dart';
 import '../services/location_service.dart';
 import 'announcement_detail_page.dart';
+import 'evacuationMap_page.dart';
 import 'hotlineDirectories_page.dart';
 import 'login_page.dart';
 
@@ -83,8 +84,6 @@ class _HomePageState extends State<HomePage> {
       );
     }
     setState(() {});
-    print("$_currentLocation");
-    print("$_currentAddress");
   }
 
   void _initializePreferences() async {
@@ -112,32 +111,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void startCountdown() {
-    int countdown = 10; // 10-second countdown
-    Timer.periodic(Duration(seconds: 1), (Timer timer) {
-      if (countdown == 0) {
-        timer.cancel();
-        // Call your function here after countdown ends
-        handleSOS();
-      } else {
-        countdown--;
-        print("Countdown: $countdown"); // You can update UI with countdown
-      }
-    });
-  }
-
-  void handleSOS() {
-    // TODO: Add the SOS feature implementation here
-    print("SOS feature triggered");
-  }
-
-  void _redirectToLogin(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     String formattedDateTime = DateFormat('MMMM d, h:mm a', 'en_PH').format(
@@ -145,10 +118,12 @@ class _HomePageState extends State<HomePage> {
             .toUtc()
             .add(Duration(hours: 8))); // UTC+8 for Philippines
     String locationName = _weatherData?['name'] ?? 'Science City of Muñoz, PH';
-    double temperature = _weatherData?['temperature'] ?? 0.0;
+
     int humidity = _weatherData?['humidity'] ?? 0;
-    double windSpeed = _weatherData?['windSpeed'] ?? 0.0;
-    double feelsLike = _weatherData?['feelsLike'] ?? 0.0;
+    double temperature = (_weatherData?['temperature'] ?? 0).toDouble();
+    double feelsLike = (_weatherData?['feelsLike'] ?? 0).toDouble();
+    double windSpeed = (_weatherData?['windSpeed'] ?? 0).toDouble();
+
     String weatherDescription = _weatherData != null &&
             _weatherData!['weather'] != null &&
             (_weatherData!['weather'] as List).isNotEmpty
@@ -191,7 +166,7 @@ class _HomePageState extends State<HomePage> {
                       weatherIcon,
                     ),
                     SizedBox(height: 20),
-                    _buildEvacuationMapAndHotlineDir(),
+                    _buildEvacuationMapAndHotlineDir(context),
                     SizedBox(height: 20),
                     _buildAnnouncements(),
                   ],
@@ -286,42 +261,58 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEvacuationMapAndHotlineDir() {
+  Widget _buildEvacuationMapAndHotlineDir(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    double fontSize =
+        screenWidth < 400 ? 14 : 16; // Adjust font size for smaller screens
+    double iconSize =
+        screenWidth < 400 ? 30 : 40; // Adjust icon size for smaller screens
+
     return Row(
       children: [
         Expanded(
           child: GestureDetector(
             onTap: () {
-              // showDialog(
-              //   context: context,
-              //   builder: (BuildContext context) {
-              //     return ReportPage();
-              //   },
-              // );
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return EvacuationMapPage();
+                },
+              );
             },
-            child: Container(
-              padding: EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey[700], // Neutral blue-grey color
-                borderRadius: BorderRadius.circular(12.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  'Evacuation Map',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
-                  ),
+            child: Material(
+              elevation: 8, // Add shadow elevation
+              shadowColor: Colors.black38,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.all(16), // Add padding for the shadow
+                decoration: BoxDecoration(
+                  color: Colors.white, // Background color of the button
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26, // Shadow color
+                      blurRadius: 10, // Increase to make the shadow softer
+                      offset: Offset(0, 4), // X, Y offset for the shadow
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.map,
+                        color: Colors.green, size: iconSize), // Use an icon
+                    SizedBox(height: 8),
+                    Text(
+                      'Evacuation Map',
+                      style: TextStyle(
+                        color: Colors.blueGrey[700],
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -338,29 +329,38 @@ class _HomePageState extends State<HomePage> {
                 },
               );
             },
-            child: Container(
-              padding: EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[800], // Simplified solid color
-                borderRadius: BorderRadius.circular(12.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  'Hotline Directories',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
-                  ),
+            child: Material(
+              elevation: 8, // Add shadow elevation
+              shadowColor: Colors.black38,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: EdgeInsets.all(16), // Add padding for the shadow
+                decoration: BoxDecoration(
+                  color: Colors.white, // Background color of the button
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26, // Shadow color
+                      blurRadius: 10, // Increase to make the shadow softer
+                      offset: Offset(0, 4), // X, Y offset for the shadow
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.phone,
+                        color: Colors.blue, size: iconSize), // Use an icon
+                    SizedBox(height: 8),
+                    Text(
+                      'Hotline Directories',
+                      style: TextStyle(
+                        color: Colors.grey[800],
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -372,7 +372,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildAnnouncements() {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _dbService.getLatestAnnouncements(), // Fetch data from Firebase
+      future: _dbService
+          .getLatestItems('announcements'), // Fetch data from Firebase
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -386,29 +387,32 @@ class _HomePageState extends State<HomePage> {
 
         return Container(
           padding: EdgeInsets.all(16.0),
+          constraints: BoxConstraints(maxHeight: 300), // Add height constraint
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color.fromARGB(255, 186, 186, 186)!,
-                const Color.fromARGB(255, 166, 159, 167)!
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16.0),
+            color: Color.fromARGB(255, 219, 219, 219),
+            borderRadius: BorderRadius.circular(12.0),
             boxShadow: [
               BoxShadow(
-                color:
-                    const Color.fromARGB(255, 132, 132, 132).withOpacity(0.3),
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
                 spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(0, 3),
+                offset: Offset(0, 5),
               ),
             ],
           ),
-          height: 250,
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'ANNOUNCEMENTS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: const Color.fromARGB(255, 0, 0, 0),
+                  ),
+                ),
+              ),
               Expanded(
                 child: PageView.builder(
                   controller: _announcementsPageController,
@@ -438,18 +442,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAnnouncementCard(Map<String, dynamic> announcement) {
-    // Convert Firebase Timestamp to DateTime
     DateTime timestamp = (announcement['timestamp'] as Timestamp).toDate();
-    String formattedDate =
-        DateFormat('MMMM d, yyyy at h:mm a').format(timestamp);
+    String formattedDate = DateFormat('MMMM d, yyyy h:mm a').format(timestamp);
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                AnnouncementDetailPage(announcement: announcement),
+            builder: (context) => AnnouncementDetailPage(
+              announcement: announcement,
+            ),
           ),
         );
       },
@@ -457,14 +460,14 @@ class _HomePageState extends State<HomePage> {
         margin: EdgeInsets.symmetric(horizontal: 8.0),
         padding: EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(16.0),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
           boxShadow: [
             BoxShadow(
-              color: const Color.fromARGB(255, 132, 132, 132).withOpacity(0.3),
+              color: Colors.grey.withOpacity(0.2),
+              blurRadius: 5,
               spreadRadius: 1,
-              blurRadius: 3,
-              offset: Offset(0, 1),
+              offset: Offset(0, 3),
             ),
           ],
         ),
@@ -473,17 +476,24 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
               announcement['title'] ?? 'Announcement',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              maxLines: 1, // Limits to 1 line
+              overflow:
+                  TextOverflow.ellipsis, // Adds ellipsis if text is too long
             ),
-            SizedBox(height: 10),
-            Text(
-              announcement['summary'] ?? 'No summary available',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            SizedBox(height: 5),
+            SizedBox(height: 8),
             Text(
               formattedDate,
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            SizedBox(height: 12),
+            Text(
+              announcement['content'] ??
+                  'Please fill in the fields and enable location services for accurate tracking. Video uploads are limited to 5 seconds.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              maxLines: 3, // Limits to 3 lines
+              overflow:
+                  TextOverflow.ellipsis, // Adds ellipsis if text is too long
             ),
           ],
         ),

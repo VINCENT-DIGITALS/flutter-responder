@@ -118,13 +118,11 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     );
   }
 
-
-
   // Load location sharing state from the database
   Future<void> _loadLocationSharingStateFromDB() async {
     try {
       // Fetch the user document from Firestore using the method from DatabaseService
-      Map<String, dynamic>? userData = await _dbService.getDocument('citizens');
+      Map<String, dynamic>? userData = await _dbService.getDocument('responders');
 
       if (userData != null && userData.containsKey('locationSharing')) {
         setState(() {
@@ -179,6 +177,12 @@ class _SettingsWidgetState extends State<SettingsWidget> {
     } else {
       // Stop the foreground service and update location sharing to false
       await _foregroundService.stopForegroundService();
+      // Ensure Firestore is updated to indicate location sharing is off
+      await _dbService.updateLocationSharing(
+        location: GeoPoint(
+            15.713612642671437, 120.90074227301498), // Optional: you can pass the last known or dummy location
+        locationSharing: false, // Set locationSharing to false here
+      );
     }
   }
 
@@ -237,7 +241,6 @@ class _SettingsWidgetState extends State<SettingsWidget> {
               },
             ),
 
-      
             LayoutBuilder(
               builder: (context, constraints) {
                 return SwitchListTile(

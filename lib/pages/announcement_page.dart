@@ -27,14 +27,12 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   @override
   void initState() {
     super.initState();
-    _loadAnnouncements();
-  }
-
-  Future<void> _loadAnnouncements() async {
-    var announcements = await _dbService.getAnnouncements();
-    setState(() {
-      _announcements = announcements;
-      _isLoading = false;
+    // Subscribe to the announcements stream
+    _dbService.getAnnouncementsStream().listen((announcements) {
+      setState(() {
+        _announcements = announcements;
+        _isLoading = false;
+      });
     });
   }
 
@@ -49,7 +47,6 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       appBar: AppBar(
         title: Text('Announcements'),
       ),
@@ -72,8 +69,8 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                     );
                   },
                   child: Card(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     elevation: 4,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -83,7 +80,6 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Text content
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,7 +93,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  announcement['summary'] ?? 'No Summary',
+                                  announcement['content'] ?? 'No Summary',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey[700],
@@ -105,8 +101,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  _formatTimestamp(
-                                      announcement['timestamp']),
+                                  _formatTimestamp(announcement['timestamp']),
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[500],
@@ -115,7 +110,6 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                               ],
                             ),
                           ),
-                          // Arrow icon
                           const Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
@@ -128,7 +122,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                 );
               },
             ),
-            bottomNavigationBar: BottomNavBar(currentPage: widget.currentPage),
+      bottomNavigationBar: BottomNavBar(currentPage: widget.currentPage),
     );
   }
 }
