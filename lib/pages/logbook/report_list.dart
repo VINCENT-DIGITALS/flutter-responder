@@ -30,6 +30,9 @@ class _ReportsListPageState extends State<ReportsListPage> {
   Position? _currentPosition;
   final LocationService _locationService =
       LocationService(); // Instantiate the LocationService
+  TextEditingController reporterNameController = TextEditingController();
+  String? reporterName;
+  String? reporterId;
 
   @override
   void initState() {
@@ -225,8 +228,6 @@ class _ReportsListPageState extends State<ReportsListPage> {
                       onTap: () => _handleReportClick(report, reports[index]),
                     ),
                   );
-            
-            
                 },
               );
             },
@@ -302,6 +303,17 @@ class _ReportsListPageState extends State<ReportsListPage> {
               _showConfirmationDialog(context,
                   'This report has already been accepted by $acceptedBy.');
             } else {
+              DocumentSnapshot userDoc =
+                  await _dbService.getReporterName(reportData['reporterId']);
+
+              // Check if the document exists
+              if (userDoc.exists) {
+                // Access the displayName field
+                reporterNameController.text = userDoc.get('displayName');
+                print('Reporter Name: $reporterName');
+              } else {
+                print('No user found for the given reporterId.');
+              }
               // Proceed with accepting the report
               // Log the report in the logBook collection
               transaction.set(
@@ -311,10 +323,7 @@ class _ReportsListPageState extends State<ReportsListPage> {
                   'primaryResponderId': _responderId,
                   'primaryResponderDisplayName': _responderName,
                   'timestamp': FieldValue.serverTimestamp(),
-                  'location': {
-                    'latitude': (reportData['location'] as GeoPoint).latitude,
-                    'longitude': (reportData['location'] as GeoPoint).longitude,
-                  },
+                  'location': reportData['location'] as GeoPoint,
                   'status': 'In Progress',
                   'incident': '',
                   'incidentDesc': reportData['description'],
@@ -327,11 +336,12 @@ class _ReportsListPageState extends State<ReportsListPage> {
                   'mediaUrl': reportData['mediaUrl'] ?? '',
                   'victims': [],
                   'responders': [
-                    {'responderName': _responderName,
+                    {
+                      'responderName': _responderName,
                     },
                   ],
                   'scam': 'Pending',
-                  'reporterId': reportData['reporterId'],
+                  'reporterName': reporterNameController.text,
                 },
               );
 

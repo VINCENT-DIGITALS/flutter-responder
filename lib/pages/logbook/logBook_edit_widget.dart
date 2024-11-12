@@ -36,9 +36,11 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
   List<Map<String, dynamic>> _victims = [];
   List<Map<String, dynamic>> _responders = [];
   String? _status; // Add this variable to store the status
+  String? _seriousness;
   String? _scam;
+  final TextEditingController _injuredCountController = TextEditingController();
   String? reporterName;
-  String? reportnerId;
+
   bool _isSaving = false;
   Timestamp? _timestamp; // To store the Firestore timestamp
   Timestamp? _updatedAt; // To store the updatedAt timestamp
@@ -62,6 +64,8 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
     _incidentTypeController.text = logbookData?['incidentType'] ?? '';
     _incidentController.text = logbookData?['incident'] ?? '';
     _incidentDescController.text = logbookData?['incidentDesc'] ?? '';
+    _injuredCountController.text = logbookData?['injuredCount'] ?? '';
+    reporterNameController.text = logbookData?['reporterName'] ?? '';
     _addressController.text =
         logbookData != null && logbookData.containsKey('address')
             ? logbookData['address']
@@ -69,12 +73,15 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
     _status = logbookData != null && logbookData.containsKey('status')
         ? widget.logbook['status']
         : 'In Progress';
+
+    _seriousness = logbookData != null && logbookData.containsKey('seriousness')
+        ? widget.logbook['seriousness']
+        : 'Minor';
+
     _scam = logbookData != null && logbookData.containsKey('scam')
         ? widget.logbook['scam']
         : 'Pending';
-    reportnerId = logbookData != null && logbookData.containsKey('reporterId')
-        ? widget.logbook['reporterId']
-        : 'Unknown';
+
     // Store the timestamps
     _timestamp = logbookData?['timestamp'];
     _updatedAt = logbookData?['updatedAt'];
@@ -119,24 +126,6 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
         responder['responderName'] ??= '';
       }
     }
-
-    if (reportnerId != null) {
-      getReporterDisplayName(reportnerId);
-    }
-  }
-
-  void getReporterDisplayName(String? reporterId) async {
-    // Call the getUserDoc function and wait for the DocumentSnapshot
-    DocumentSnapshot userDoc = await _dbService.getReporterName(reporterId!);
-
-    // Check if the document exists
-    if (userDoc.exists) {
-      // Access the displayName field
-      reporterNameController.text = userDoc.get('displayName');
-      print('Reporter Name: $reporterName');
-    } else {
-      print('No user found for the given reporterId.');
-    }
   }
 
   Future<void> _saveLogBookLocally() async {
@@ -151,7 +140,9 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
       'incident': _incidentController.text,
       'incidentDesc': _incidentDescController.text,
       'victims': _victims,
+      'injuredCount': _injuredCountController.text,
       'vehicles': _vehicles,
+      'seriousness': _seriousness,
       'responders': _responders,
       'reportId': widget.logbook['reportId'],
       'status': _status, // Add the status field here
@@ -202,16 +193,20 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
         'incident': _incidentController.text,
         'incidentDesc': _incidentDescController.text, // New field
         'victims': _victims,
+        'injuredCount': _injuredCountController.text,
         'vehicles': _vehicles,
+        'seriousness': _seriousness,
         'responders': _responders,
         'status': _status, // Add the status field here
         'scam': _scam,
         'address': _addressController.text, // Add address field here
+
         'updatedAt': FieldValue.serverTimestamp(), // New field to track updates
       }).timeout(const Duration(seconds: 5)); // Timeout after 5 seconds
 
-      // Check if 'reportId' exists in the logbook document
-      if (widget.logbook['reportId'] != null) {
+      // Check if 'reportId' exists in the logbook document and is not an empty string
+      if (widget.logbook['reportId'] != null &&
+          widget.logbook['reportId'].toString().trim().isNotEmpty) {
         String reportId = widget.logbook['reportId'];
 
         // Update the status of the corresponding report with a timeout
@@ -222,6 +217,8 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
           'status': _status, // Update the status of the report
           'updatedAt': FieldValue.serverTimestamp(),
         }).timeout(const Duration(seconds: 10)); // Timeout after 10 seconds
+      } else {
+        print('No valid reportId found, skipping update.');
       }
 
       widget.onSave(); // Callback to notify parent widget
@@ -229,18 +226,17 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
       // Firestore save successful, delete the locally saved logbook
       // Delete the logbook from shared preferences upon successful update
 
-
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Logbook saved successfully.'),
         backgroundColor: Colors.green,
       ));
-    } on TimeoutException catch (_) {
+    } on TimeoutException catch (e) {
       // Save locally first to ensure data persistence
       await _saveLogBookLocally();
       // If a timeout occurs, notify the user and keep the local save
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text('Network timeout. Data saved locally; Upload it again later.'),
+        content: Text(
+            'Network timeout. Data saved locally; Upload it again later. ${e}'),
         backgroundColor: Colors.green,
       ));
       widget.onSave(); // Callback to notify parent widget
@@ -254,7 +250,6 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
         backgroundColor: Colors.red,
       ));
     } finally {
-   
       setState(() {
         _isSaving = false;
       });
@@ -376,12 +371,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
                     SizedBox(height: 12),
                     buildTextField('Landmark', _landmarkController),
                     SizedBox(height: 12),
-                    buildTextField('Incident Type', _incidentTypeController),
-                    SizedBox(height: 12),
-                    buildTextField('Incident', _incidentController),
-                    SizedBox(height: 12),
-                    buildTextField(
-                        'Incident Description', _incidentDescController),
+                    buildTextField('# of Injured', _injuredCountController),
                     SizedBox(height: 12),
                     buildTextField('Transported To', _transportedToController),
                     SizedBox(height: 12),
@@ -393,13 +383,37 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
                       });
                     }),
                     SizedBox(height: 12),
+                    // Status Dropdown
+                    buildDropdownField('Seriousness',
+                        ['Minor', 'Moderate', 'Severe'], _seriousness, (val) {
+                      setState(() {
+                        _seriousness = val ?? 'Minor';
+                      });
+                    }),
+                    SizedBox(height: 12),
                     buildDropdownField(
-                        'Legibility', ['Pending', 'Scam', 'Legit'], _scam,
+                        'Legitimacy', ['Pending', 'Scam', 'Legit'], _scam,
                         (val) {
                       setState(() {
                         _scam = val ?? 'Pending';
                       });
                     }),
+                    SizedBox(height: 12),
+                    buildTextField('Incident Type', _incidentTypeController),
+                    SizedBox(height: 12),
+                    buildTextField(
+                      'Incident',
+                      _incidentController,
+                      minLines: 3,
+                      maxLines: null,
+                    ),
+                    SizedBox(height: 12),
+                    buildTextField(
+                      'Incident Description',
+                      _incidentDescController,
+                      minLines: 3,
+                      maxLines: null,
+                    ),
                   ],
                 ),
               ),

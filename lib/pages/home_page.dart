@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localization/flutter_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'dart:async';
 
 import '../components/bottom_bar.dart';
 import '../components/custom_drawer.dart';
+import '../localization/locales.dart';
 import '../services/database.dart';
 import '../services/location_service.dart';
 import 'announcement_detail_page.dart';
@@ -68,17 +70,18 @@ class _HomePageState extends State<HomePage> {
       bool isLocationServiceEnabled =
           await _locationService.isLocationEnabled();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Success: Access to location been granted'),
+        SnackBar(
+          content: Text(
+            LocaleData.locationSuccess.getString(context),
+          ),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       _errorMessage = e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Failed to get current location: Access to location been denied'),
+        SnackBar(
+          content: Text(LocaleData.locationError.getString(context)),
           backgroundColor: Colors.red,
         ),
       );
@@ -235,7 +238,7 @@ class _HomePageState extends State<HomePage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Weather',
+                  Text(LocaleData.weather.getString(context),
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -304,7 +307,7 @@ class _HomePageState extends State<HomePage> {
                         color: Colors.green, size: iconSize), // Use an icon
                     SizedBox(height: 8),
                     Text(
-                      'Evacuation Map',
+                      LocaleData.evacuationCenter.getString(context),
                       style: TextStyle(
                         color: Colors.blueGrey[700],
                         fontSize: fontSize,
@@ -352,7 +355,7 @@ class _HomePageState extends State<HomePage> {
                         color: Colors.blue, size: iconSize), // Use an icon
                     SizedBox(height: 8),
                     Text(
-                      'Hotline Directories',
+                      LocaleData.hotlineDirec.getString(context),
                       style: TextStyle(
                         color: Colors.grey[800],
                         fontSize: fontSize,
@@ -371,9 +374,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildAnnouncements() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _dbService
-          .getLatestItems('announcements'), // Fetch data from Firebase
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _dbService.getLatestItemsStream('announcements'),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -387,7 +389,7 @@ class _HomePageState extends State<HomePage> {
 
         return Container(
           padding: EdgeInsets.all(16.0),
-          constraints: BoxConstraints(maxHeight: 300), // Add height constraint
+          constraints: BoxConstraints(maxHeight: 300),
           decoration: BoxDecoration(
             color: Color.fromARGB(255, 219, 219, 219),
             borderRadius: BorderRadius.circular(12.0),
@@ -405,7 +407,7 @@ class _HomePageState extends State<HomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(
-                  'ANNOUNCEMENTS',
+                  LocaleData.announcements.getString(context),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

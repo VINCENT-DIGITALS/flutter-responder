@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/database.dart';
 import '../../services/location_service.dart';
 import '../maps/incident_report_map.dart';
+import 'add_new_log.dart';
 import 'logBook_edit_widget.dart';
 
 class LogBookListPage extends StatefulWidget {
@@ -131,7 +132,22 @@ class _LogBookListPageState extends State<LogBookListPage> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8.0),
                     onTap: () {
-                      // Action for the button (e.g., open a new logbook page)
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        isDismissible:
+                            false, // Prevents closing by tapping the background
+                        builder: (context) {
+                          return FractionallySizedBox(
+                            heightFactor: 0.8,
+                            child: FloatingNewLogBookWidget(
+                              onSave: () {
+                                Navigator.pop(context);
+                              },
+                            ),
+                          );
+                        },
+                      );
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -286,7 +302,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                                       color: Colors.white, size: 12),
                                   SizedBox(width: 4),
                                   Text(
-                                    'Legibility: ${logbook['scam'] ?? 'Pending'}',
+                                    'Legitimacy: ${logbook['scam'] ?? 'Pending'}',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -330,35 +346,38 @@ class _LogBookListPageState extends State<LogBookListPage> {
                             .spaceBetween, // Spread children apart
                         children: [
                           Center(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                if (mediaUrl != null) {
-                                  final uri = Uri.parse(mediaUrl);
-                                  if (await canLaunchUrl(uri)) {
-                                    await launchUrl(uri,
-                                        mode: LaunchMode.externalApplication);
+                            child: Visibility(
+                              visible: mediaUrl !=
+                                  null, // Show button only if mediaUrl is not null
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (mediaUrl != null) {
+                                    final uri = Uri.parse(mediaUrl);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri,
+                                          mode: LaunchMode.externalApplication);
+                                    } else {
+                                      print('Could not launch $mediaUrl');
+                                    }
                                   } else {
-                                    print('Could not launch $mediaUrl');
+                                    print('No media URL available');
                                   }
-                                } else {
-                                  print('No media URL available');
-                                }
-                              },
-                              icon: const Icon(Icons.open_in_new,
-                                  color: Colors.white),
-                              label: const Text(
-                                ' Media',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                                },
+                                icon: const Icon(Icons.open_in_new,
+                                    color: Colors.white),
+                                label: const Text(
+                                  ' Media',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-
                           // Space between Status and Map Button
                           SizedBox(
                               width:
@@ -379,17 +398,13 @@ class _LogBookListPageState extends State<LogBookListPage> {
                                 size: 30,
                               ),
                               onPressed: () {
-                                // Check if the location is a map with 'latitude' and 'longitude'
+                                // Check if the location is a GeoPoint
                                 if (logbook['location'] != null &&
-                                    logbook['location'] is Map &&
-                                    logbook['location']['latitude'] != null &&
-                                    logbook['location']['longitude'] != null) {
-                                  // Extract latitude and longitude from the map
-                                  double latitude =
-                                      logbook['location']['latitude'];
-                                  double longitude =
-                                      logbook['location']['longitude'];
-                                  LatLng location = LatLng(latitude, longitude);
+                                    logbook['location'] is GeoPoint) {
+                                  // Extract latitude and longitude from the GeoPoint
+                                  GeoPoint geoPoint = logbook['location'];
+                                  LatLng location = LatLng(
+                                      geoPoint.latitude, geoPoint.longitude);
 
                                   // Navigate to the map screen
                                   Navigator.push(
@@ -410,7 +425,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                                 }
                               },
                             ),
-                          ),
+                          )
                         ],
                       )
                     ],

@@ -18,6 +18,17 @@ class DatabaseService {
   final CollectionReference chats =
       FirebaseFirestore.instance.collection('chats');
 
+  Future<bool> isEmailVerified(User user) async {
+    // Reload user data to get the latest verification status
+    await user.reload();
+    return user.emailVerified;
+  }
+
+  Future<void> sendVerificationEmail(User user) async {
+    if (!user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
   Future<void> saveFcmToken(String userId) async {
     try {
       final FirebaseApi firebaseApi = FirebaseApi();
@@ -295,32 +306,36 @@ class DatabaseService {
     }
   }
 
-  // Fetch announcements as a stream from Firestore
-  Stream<List<Map<String, dynamic>>> getAnnouncementsStream() {
-    return _db
-        .collection('announcements')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList());
-  }
+// Fetch announcements as a stream from Firestore where archived is false
+Stream<List<Map<String, dynamic>>> getAnnouncementsStream() {
+  return _db
+      .collection('announcements')
+      .where('archived', isEqualTo: false) // Filter archived items
+      .orderBy('timestamp', descending: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList());
+}
 
-  // Method to fetch the latest announcements or features
-  Future<List<Map<String, dynamic>>> getLatestItems(String collection,
-      {int limit = 3}) async {
-    QuerySnapshot snapshot = await _db
-        .collection(collection)
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .get();
+Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int limit = 3}) {
+  return _db
+      .collection(collection)
+      .where('archived', isEqualTo: false) // Filter archived items
+      .orderBy('timestamp', descending: true)
+      .limit(limit)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          data['id'] = doc.id; // Include document ID if needed
+          return data;
+        }).toList();
+      });
+}
 
-    return snapshot.docs.map((doc) {
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-      data['id'] = doc.id; // Optional: include document ID if needed
-      return data;
-    }).toList();
-  }
+
+
   // Method to update specific fields of the current user document
   Future<void> updateUserData({
     required Map<String, dynamic> updatedFields,
@@ -691,7 +706,7 @@ class DatabaseService {
         case 'invalid-credential':
           //flutterToastError('Incorrect password');
           print('Something went wrong: $e');
-          return 'Incorrect password';
+          return 'Incorrect Email/password';
         //break;
         case 'user-disabled':
           //flutterToastError('User account has been disabled');\
