@@ -129,9 +129,13 @@ flutter:
     - assets/images/30.png
     - assets/images/31.png
     - assets/images/32.png
+    - assets/sounds/emergencynotifsound.wav
+    - assets/sounds/emergencynotifsound1.mp3
+    - assets/sounds/emergencynotifsound111.wav
+    - assets/sounds/emergencynotifsoundshort.wav
+    - assets/sounds/chatsound.wav
     - assets/images/LOGOAPP0.png
-    - assets/sounds/emergencynotifsound.mp3
-
+    - assets/images/weathericonplaceholder.png
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

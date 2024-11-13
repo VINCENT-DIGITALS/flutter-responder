@@ -334,7 +334,37 @@ Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int 
       });
 }
 
+  // Fetch current weather data from Firestore
+  Future<Map<String, dynamic>?> fetchCurrentWeatherData() async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> doc =
+          await _db.collection('weather').doc('current').get();
+      if (doc.exists) {
+        return doc.data()?['currentWeather'];
+      } else {
+        print('Current weather document does not exist');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching current weather data: $e');
+      return null;
+    }
+  }
 
+Future<List<Map<String, dynamic>>> fetchForecastData() async {
+  try {
+    QuerySnapshot<Map<String, dynamic>> querySnapshot = await _db
+        .collection('weather')  // Assuming 'weather' is your Firestore collection
+        .where(FieldPath.documentId, isNotEqualTo: 'current')  // Exclude the 'current' document
+        .get();
+
+    // Convert the query snapshot into a list of maps (documents data)
+    return querySnapshot.docs.map((doc) => doc.data()).toList();
+  } catch (e) {
+    print('Error fetching forecast data: $e');
+    return [];
+  }
+}
 
   // Method to update specific fields of the current user document
   Future<void> updateUserData({
@@ -661,7 +691,7 @@ Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int 
 
       if (docSnapshot.docs.isEmpty) {
         // flutterToastError('User document does not exist');
-        return 'Account does not exist';
+        return 'Email was not found, Please try again or Sign Up';
       }
 
       final userData = docSnapshot.docs.first.data();
@@ -689,6 +719,7 @@ Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int 
         'address': userData['address'] ?? '',
         'type': userData['type'] ?? '',
         'status': userData['status'] ?? '',
+        'privacyPolicyAccepted': userData['privacyPolicyAcceptance'] ?? false,  // Added privacy policy status
       });
       // Save FCM token
       await saveFcmToken(documentId);

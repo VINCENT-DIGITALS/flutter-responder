@@ -96,13 +96,13 @@ class _LoginPageState extends State<LoginPage>
           textColor: Colors.white,
         );
       } else {
-        Fluttertoast.showToast(
-          msg: 'Login Success, Redirecting...',
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-        );
+        // Fluttertoast.showToast(
+        //   msg: 'Login Success, Redirecting...',
+        //   toastLength: Toast.LENGTH_SHORT,
+        //   gravity: ToastGravity.BOTTOM,
+        //   backgroundColor: Colors.green,
+        //   textColor: Colors.white,
+        // );
 
         // Delay for user experience
         await Future.delayed(const Duration(seconds: 2));

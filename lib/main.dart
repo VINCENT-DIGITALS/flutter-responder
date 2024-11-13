@@ -20,22 +20,38 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  //   const AndroidInitializationSettings initializationSettingsAndroid =
-  //     AndroidInitializationSettings('@mipmap/ic_launcher');
-  // const InitializationSettings initializationSettings =
-  //     InitializationSettings(android: initializationSettingsAndroid);
 
-  // await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   await SystemChrome.setPreferredOrientations([
     // LOCKING THE APP RATOTION INTO POTRAIT ONLY
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
   await initializeDateFormatting('en_PH', null); // Initialize the locale
-  await initializeFirebase();
+  // Initialize Firebase
+  try {
+    await initializeFirebase();
+    print("Firebase initialized successfully.");
+  } catch (e) {
+    print("Error during Firebase initialization: $e");
+    // Optionally: show a dialog or UI message to inform the user of the issue
+  }
   await dotenv.load(fileName: '.env');
-
-  await FMTCObjectBoxBackend().initialise();
+  // Initialize Notification Service for Android
+  try {
+    await NotificationService().initialize();
+    print("Notification service initialized successfully.");
+  } catch (e) {
+    print("Error during NotificationService initialization: $e");
+    // Optionally: show a dialog or UI message to inform the user of the issue
+  }
+  // Initialize FMTC for Android
+  try {
+    await FMTCObjectBoxBackend().initialise();
+    print("FMTC service initialized successfully.");
+  } catch (e) {
+    print("Error during FMTC initialization: $e");
+    // Optionally: show a dialog or UI message to inform the user of the issue
+  }
 
   final mgmt = FMTCStore('mapCache').manage;
 
@@ -86,8 +102,6 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     configureLocalization();
-    // Initialize Notification Service for Android
-    NotificationService().initialize();
   }
 
   @override

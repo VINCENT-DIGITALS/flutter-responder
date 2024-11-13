@@ -6,16 +6,17 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'dart:async';
-
+import 'package:url_launcher/url_launcher.dart';
+import '../api/firebase_api.dart';
 import '../components/bottom_bar.dart';
 import '../components/custom_drawer.dart';
 import '../localization/locales.dart';
 import '../services/database.dart';
-import '../services/location_service.dart';
-import 'announcement_detail_page.dart';
+import '../services/location_service copy.dart';
+import '../services/notificatoin_service.dart';
 import 'evacuationMap_page.dart';
-import 'hotlineDirectories_page.dart';
-import 'login_page.dart';
+import 'homepage/announcementcard.dart';
+import 'homepage/mapHotLine.dart';
 
 class HomePage extends StatefulWidget {
   final String currentPage;
@@ -32,6 +33,8 @@ class _HomePageState extends State<HomePage> {
   final DatabaseService _dbService = DatabaseService();
   Map<String, String> _userData = {};
   bool _isLoading = true;
+  final String phoneNumber =
+      "09667746951"; // Replace with the phone number you want
 
   final ScrollController _scrollController = ScrollController();
   final PageController _postsPageController = PageController();
@@ -41,6 +44,11 @@ class _HomePageState extends State<HomePage> {
   String _currentAddress = "";
   String _errorMessage = "";
   final LocationService _locationService = LocationService();
+  double? _latitude;
+  double? _longitude;
+  final NotificationService _notificationService = NotificationService();
+  Map<String, dynamic>? _currentWeatherData;
+  List<Map<String, dynamic>>? _forecastData;
 
   @override
   void initState() {
@@ -48,13 +56,60 @@ class _HomePageState extends State<HomePage> {
     _initializePreferences();
     _fetchLocation();
     _fetchWeatherData();
+    // FirebaseApi().initNotifications();
+    // Initialize Notification Service for Android
+    _initializeNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeNotifications();
+    });
   }
 
+  // Initialize the notification service
+  Future<void> _initializeNotifications() async {
+    try {
+      await _notificationService
+          .initialize(); // This ensures permission request is handled
+      bool hasPermission =
+          await NotificationService().hasNotificationPermission();
+      if (hasPermission) {
+        // Request permission when enabling notifications
+        bool granted =
+            await _notificationService.requestNotificationPermission();
+        if (!granted) {
+          // Show an alert if permission is denied
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Notification not enabled, enable it in app setting.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // When disabling notifications, show a confirmation dialog
+      }
+    } catch (e) {
+      print("Error initializing notifications: $e");
+    }
+  }
+
+  // Fetch current weather and forecast data from Firestore
   Future<void> _fetchWeatherData() async {
-    final data = await _dbService.fetchWeatherData();
-    setState(() {
-      _weatherData = data;
-    });
+    try {
+      var currentWeather = await _dbService.fetchCurrentWeatherData();
+      var forecast = await _dbService.fetchForecastData();
+
+      setState(() {
+        _currentWeatherData = currentWeather;
+        _forecastData = forecast;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error fetching weather data: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchLocation() async {
@@ -63,10 +118,12 @@ class _HomePageState extends State<HomePage> {
       _currentAddress =
           await _locationService.getAddressFromLocation(_currentLocation!);
       _errorMessage = "";
+      setState(() {
+        _latitude = _currentLocation?.latitude; // Store latitude
+        _longitude = _currentLocation?.longitude; // Store longitude
+      });
 
-      double? latitude = _currentLocation?.latitude;
-      double? longitude = _currentLocation?.longitude;
-      print("Latitude: $latitude, Longitude: $longitude");
+      print("Latitude: $_latitude, Longitude: $_longitude");
       bool isLocationServiceEnabled =
           await _locationService.isLocationEnabled();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +134,10 @@ class _HomePageState extends State<HomePage> {
           backgroundColor: Colors.green,
         ),
       );
+      // await _dbService.updateLocationSharing(
+      //   location: GeoPoint(_latitude!,
+      //       _longitude!), // Create the GeoPoint using _latitude and _longitude
+      // );
     } catch (e) {
       _errorMessage = e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,6 +148,8 @@ class _HomePageState extends State<HomePage> {
       );
     }
     setState(() {});
+    print("$_currentLocation");
+    print("$_currentAddress");
   }
 
   void _initializePreferences() async {
@@ -114,37 +177,36 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _dialNumber(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      throw 'Could not launch $launchUri';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     String formattedDateTime = DateFormat('MMMM d, h:mm a', 'en_PH').format(
         DateTime.now()
             .toUtc()
             .add(Duration(hours: 8))); // UTC+8 for Philippines
-    String locationName = _weatherData?['name'] ?? 'Science City of Muñoz, PH';
 
-    int humidity = _weatherData?['humidity'] ?? 0;
-    double temperature = (_weatherData?['temperature'] ?? 0).toDouble();
-    double feelsLike = (_weatherData?['feelsLike'] ?? 0).toDouble();
-    double windSpeed = (_weatherData?['windSpeed'] ?? 0).toDouble();
-
-    String weatherDescription = _weatherData != null &&
-            _weatherData!['weather'] != null &&
-            (_weatherData!['weather'] as List).isNotEmpty
-        ? _weatherData!['weather'][0]['description'] ??
-            'Clear sky, Light breeze'
-        : 'Clear sky, Light breeze';
-    String weatherIcon = _weatherData != null &&
-            _weatherData!['weather'] != null &&
-            (_weatherData!['weather'] as List).isNotEmpty
-        ? _weatherData!['weather'][0]['icon'] ?? '01d'
-        : '01d';
     return SafeArea(
       child: Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
           title: Text('Home Page'),
-          shadowColor: Colors.black,
-          elevation: 2.0,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.phone, color: Colors.orange, size: 40),
+              onPressed: () => _dialNumber(phoneNumber),
+            ),
+          ],
         ),
         drawer: CustomDrawer(scaffoldKey: _scaffoldKey),
         body: _isLoading
@@ -158,20 +220,11 @@ class _HomePageState extends State<HomePage> {
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    _buildWeatherWidget(
-                      formattedDateTime,
-                      locationName,
-                      temperature,
-                      humidity,
-                      windSpeed,
-                      feelsLike,
-                      weatherDescription,
-                      weatherIcon,
-                    ),
+                    _buildWeatherWidget(formattedDateTime, _currentWeatherData),
                     SizedBox(height: 20),
-                    _buildEvacuationMapAndHotlineDir(context),
+                    buildEvacuationMapAndHotlineDir(context),
                     SizedBox(height: 20),
-                    _buildAnnouncements(),
+                    buildAnnouncements(context),
                   ],
                 ),
               ),
@@ -181,325 +234,435 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildWeatherWidget(
-      String formattedDateTime,
-      String locationName,
-      double temperature,
-      int humidity,
-      double windSpeed,
-      double feelsLike,
-      String weatherDescription,
-      String weatherIcon) {
-    String dayOfWeek = DateFormat('EEEE', 'en_PH').format(DateTime.now()
-        .toUtc()
-        .add(Duration(hours: 8))); // UTC+8 for PhilippinesF
+      String formattedDateTime, Map<String, dynamic>? weatherData) {
+    if (weatherData == null) {
+      // Return a placeholder widget until the data is fetched
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    String locationName = weatherData['name'] ?? 'Unknown Location';
+    double temperature = weatherData['main']['temp']?.toDouble() ?? 0;
+    int humidity = weatherData['main']['humidity'] ?? 0;
+    double windSpeed = weatherData['wind']['speed']?.toDouble() ?? 0;
+    String weatherDescription =
+        weatherData['weather'][0]['description'] ?? 'No Description';
+    String weatherIcon = weatherData['weather'][0]['icon'] ?? '01d';
+
+    return GestureDetector(
+      onTap: () {
+        _showWeatherDialog(
+            context); // Show the dialog when the widget is tapped
+      },
+      child: AnimatedScale(
+        duration: Duration(milliseconds: 200),
+        scale: 1.05, // Slightly increase the scale on tap for a subtle effect
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[500]!, Colors.blue[200]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(formattedDateTime,
+                  style: TextStyle(fontSize: 12, color: Colors.white)),
+              Text(locationName,
+                  style: TextStyle(fontSize: 12, color: Colors.white)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("${temperature.toStringAsFixed(1)}°C",
+                          style: TextStyle(fontSize: 24, color: Colors.white)),
+                      Text("$humidity%",
+                          style: TextStyle(fontSize: 12, color: Colors.white)),
+                      Text("${windSpeed.toStringAsFixed(2)} km/h",
+                          style: TextStyle(fontSize: 12, color: Colors.white)),
+                      Text(weatherDescription,
+                          style: TextStyle(fontSize: 12, color: Colors.white)),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Center(
+                        child: AnimatedOpacity(
+                          opacity: 0.6, // Make the icon a little transparent
+                          duration: Duration(milliseconds: 200),
+                          child: Icon(
+                            Icons.ads_click_rounded,
+                            color: Colors.white,
+                            size: 50,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Image.network(
+                        'https://openweathermap.org/img/wn/$weatherIcon@2x.png',
+                        width: 50,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Image.asset(
+                          'assets/images/weathericonplaceholder.png',
+                          width: 50,
+                        ),
+                      ),
+                      Text('Weather',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Show the weather details in a dialog when tapped
+
+  void _showWeatherDialog(BuildContext context) {
+    if (_currentWeatherData == null || _forecastData == null) return;
+
+    String locationName = _currentWeatherData!['name'] ?? 'Unknown Location';
+    double temperature = _currentWeatherData!['main']['temp']?.toDouble() ?? 0;
+    int humidity = _currentWeatherData!['main']['humidity'] ?? 0;
+    double windSpeed = _currentWeatherData!['wind']['speed']?.toDouble() ?? 0;
+    String weatherDescription =
+        _currentWeatherData!['weather'][0]['description'] ?? 'No Description';
+    String weatherIcon = _currentWeatherData!['weather'][0]['icon'] ?? '01d';
+
+    PageController _pageController = PageController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.all(10),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: 350,
+              maxHeight: 450,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+            child: Stack(
+              children: [
+                // PageView to slide the weather details horizontally
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: 1 +
+                      _forecastData!.length, // Current weather + forecast pages
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      // Current weather slide
+                      return _buildCurrentWeatherPage(
+                        locationName,
+                        temperature,
+                        humidity,
+                        windSpeed,
+                        weatherDescription,
+                        weatherIcon,
+                      );
+                    } else {
+                      // Forecast slide (index - 1 because the first page is current weather)
+                      var forecast = _forecastData![index - 1];
+                      return _buildForecastPage(forecast);
+                    }
+                  },
+                ),
+                // SmoothPageIndicator at the bottom
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: SmoothPageIndicator(
+                    controller: _pageController,
+                    count: 1 + _forecastData!.length,
+                    effect: ExpandingDotsEffect(
+                      activeDotColor: Colors.white,
+                      dotColor: Colors.white.withOpacity(0.6),
+                      dotHeight: 8,
+                      dotWidth: 8,
+                      spacing: 8,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+// Helper method to build the current weather page
+  Widget _buildCurrentWeatherPage(String location, double temp, int humidity,
+      double windSpeed, String description, String icon) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[200]!, Colors.blue[400]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.blue[700],
         borderRadius: BorderRadius.circular(16.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.5),
-            spreadRadius: 2,
-            blurRadius: 5,
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
             offset: Offset(0, 3),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(formattedDateTime,
-              style: TextStyle(fontSize: 12, color: Colors.white)),
-          Text('$locationName',
-              style: TextStyle(fontSize: 12, color: Colors.white)),
+          Text(
+            'Current Weather',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            location,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 10),
+          Image.network(
+            'https://openweathermap.org/img/wn/$icon@2x.png',
+            width: 100,
+            errorBuilder: (context, error, stackTrace) => Image.asset(
+                'assets/images/weathericonplaceholder.png',
+                width: 50),
+          ),
+          SizedBox(height: 10),
+          Text(
+            "${temp.toStringAsFixed(1)}°C",
+            style: TextStyle(
+              fontSize: 48,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            description.toUpperCase(),
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
+            ),
+          ),
+          SizedBox(height: 20),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("${temperature.toStringAsFixed(1)}°C",
-                      style: TextStyle(fontSize: 24, color: Colors.white)),
-                  Text("$humidity%",
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
-                  Text("${windSpeed.toStringAsFixed(2)}km/h",
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
-                  Text("${feelsLike.toStringAsFixed(1)}°C",
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
-                  Text(weatherDescription,
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
+                  Icon(Icons.water_drop, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text(
+                    "Humidity",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  Text(
+                    "$humidity%",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(LocaleData.weather.getString(context),
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                  Text(dayOfWeek,
-                      style: TextStyle(fontSize: 12, color: Colors.white)),
+                  Icon(Icons.air, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text(
+                    "Wind Speed",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  Text(
+                    "${windSpeed.toStringAsFixed(2)} km/h",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-          // SizedBox(height: 16.0),
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          //   children: [
-          //     Text('Morning\n29°C', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.white)),
-          //     Text('Afternoon\n33°C', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.white)),
-          //     Text('Evening\n31°C', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.white)),
-          //     Text('Night\n27°C', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.white)),
-          //   ],
-          // ),
         ],
       ),
     );
   }
 
-  Widget _buildEvacuationMapAndHotlineDir(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    double fontSize =
-        screenWidth < 400 ? 14 : 16; // Adjust font size for smaller screens
-    double iconSize =
-        screenWidth < 400 ? 30 : 40; // Adjust icon size for smaller screens
-
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return EvacuationMapPage();
-                },
-              );
-            },
-            child: Material(
-              elevation: 8, // Add shadow elevation
-              shadowColor: Colors.black38,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: EdgeInsets.all(16), // Add padding for the shadow
-                decoration: BoxDecoration(
-                  color: Colors.white, // Background color of the button
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26, // Shadow color
-                      blurRadius: 10, // Increase to make the shadow softer
-                      offset: Offset(0, 4), // X, Y offset for the shadow
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.map,
-                        color: Colors.green, size: iconSize), // Use an icon
-                    SizedBox(height: 8),
-                    Text(
-                      LocaleData.evacuationCenter.getString(context),
-                      style: TextStyle(
-                        color: Colors.blueGrey[700],
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+// Ensure forecast data exists before accessing properties
+  Widget _buildForecastPage(Map<String, dynamic> forecast) {
+    // Safely access the forecast data, using null-aware operators and default values
+    if (forecast == null ||
+        forecast['forecast'] == null ||
+        forecast['forecast'][0] == null) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Text(
+            "Forecast data unavailable",
+            style: TextStyle(color: Colors.white, fontSize: 18),
           ),
         ),
-        SizedBox(width: 10),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return HotlineDirectoriesPage();
-                },
-              );
-            },
-            child: Material(
-              elevation: 8, // Add shadow elevation
-              shadowColor: Colors.black38,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: EdgeInsets.all(16), // Add padding for the shadow
-                decoration: BoxDecoration(
-                  color: Colors.white, // Background color of the button
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26, // Shadow color
-                      blurRadius: 10, // Increase to make the shadow softer
-                      offset: Offset(0, 4), // X, Y offset for the shadow
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.phone,
-                        color: Colors.blue, size: iconSize), // Use an icon
-                    SizedBox(height: 8),
-                    Text(
-                      LocaleData.hotlineDirec.getString(context),
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
+      );
+    }
+
+    double temp = forecast['forecast'][0]['main']['temp']?.toDouble() ?? 0;
+    int humidity = forecast['forecast'][0]['main']['humidity'] ?? 0;
+    double windSpeed =
+        forecast['forecast'][0]['wind']['speed']?.toDouble() ?? 0;
+    String description = forecast['forecast'][0]['weather'][0]['description'] ??
+        'No Description';
+    String icon = forecast['forecast'][0]['weather'][0]['icon'] ?? '01d';
+    String dateTime = forecast['forecast'][0]['dt_txt'] ?? 'N/A';
+    // Format the date using intl package
+    // Convert the dateTime string to a DateTime object
+    DateTime date = DateTime.parse(dateTime);
+    String formattedDate = DateFormat('EEEE, dd MMMM yyyy')
+        .format(date); // "Monday, 15 November 2024"
+
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.green[700],
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Weather Forecast',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAnnouncements() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _dbService.getLatestItemsStream('announcements'),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error fetching announcements'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text('No announcements available'));
-        }
-
-        List<Map<String, dynamic>> announcements = snapshot.data!;
-
-        return Container(
-          padding: EdgeInsets.all(16.0),
-          constraints: BoxConstraints(maxHeight: 300),
-          decoration: BoxDecoration(
-            color: Color.fromARGB(255, 219, 219, 219),
-            borderRadius: BorderRadius.circular(12.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                spreadRadius: 2,
-                offset: Offset(0, 5),
-              ),
-            ],
+          Text(
+            formattedDate,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          child: Column(
+          SizedBox(height: 10),
+          Image.network(
+            'https://openweathermap.org/img/wn/$icon@2x.png',
+            width: 100,
+            errorBuilder: (context, error, stackTrace) => Image.asset(
+                'assets/images/weathericonplaceholder.png',
+                width: 50),
+          ),
+          SizedBox(height: 10),
+          Text(
+            "${temp.toStringAsFixed(1)}°C",
+            style: TextStyle(
+              fontSize: 36,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            description.toUpperCase(),
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
+            ),
+          ),
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  LocaleData.announcements.getString(context),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: const Color.fromARGB(255, 0, 0, 0),
+              Column(
+                children: [
+                  Icon(Icons.water_drop, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text(
+                    "Humidity",
+                    style: TextStyle(color: Colors.white),
                   ),
-                ),
+                  Text(
+                    "$humidity%",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: PageView.builder(
-                  controller: _announcementsPageController,
-                  itemCount: announcements.length,
-                  itemBuilder: (context, index) {
-                    return _buildAnnouncementCard(announcements[index]);
-                  },
-                ),
-              ),
-              SizedBox(height: 10),
-              SmoothPageIndicator(
-                controller: _announcementsPageController,
-                count: announcements.length,
-                effect: WormEffect(
-                  dotHeight: 8,
-                  dotWidth: 8,
-                  spacing: 16,
-                  dotColor: Colors.grey,
-                  activeDotColor: Colors.blue,
-                ),
+              Column(
+                children: [
+                  Icon(Icons.air, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text(
+                    "Wind Speed",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  Text(
+                    "${windSpeed.toStringAsFixed(2)} km/h",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAnnouncementCard(Map<String, dynamic> announcement) {
-    DateTime timestamp = (announcement['timestamp'] as Timestamp).toDate();
-    String formattedDate = DateFormat('MMMM d, yyyy h:mm a').format(timestamp);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AnnouncementDetailPage(
-              announcement: announcement,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 8.0),
-        padding: EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 5,
-              spreadRadius: 1,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              announcement['title'] ?? 'Announcement',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              maxLines: 1, // Limits to 1 line
-              overflow:
-                  TextOverflow.ellipsis, // Adds ellipsis if text is too long
-            ),
-            SizedBox(height: 8),
-            Text(
-              formattedDate,
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            SizedBox(height: 12),
-            Text(
-              announcement['content'] ??
-                  'Please fill in the fields and enable location services for accurate tracking. Video uploads are limited to 5 seconds.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              maxLines: 3, // Limits to 3 lines
-              overflow:
-                  TextOverflow.ellipsis, // Adds ellipsis if text is too long
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
+
+
 }
