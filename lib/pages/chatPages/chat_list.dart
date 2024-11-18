@@ -13,8 +13,10 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  final CollectionReference chats = FirebaseFirestore.instance.collection('chats');
-  final User? currentUser = FirebaseAuth.instance.currentUser; // Get current user
+  final CollectionReference chats =
+      FirebaseFirestore.instance.collection('chats');
+  final User? currentUser =
+      FirebaseAuth.instance.currentUser; // Get current user
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,7 @@ class _ChatListPageState extends State<ChatListPage> {
         title: Text('Chats'),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: chats.snapshots(),
+        stream: chats.where('archived', isEqualTo: false).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Center(child: CircularProgressIndicator());
@@ -51,10 +53,12 @@ class _ChatListPageState extends State<ChatListPage> {
               var chatData = filteredChats[index];
               var lastMessage = chatData['last_message'];
               var lastMessageTime = chatData['last_message_time'].toDate();
-              var chatTitle = chatData['chat_name'];// Change this to your chat title field
+              var chatTitle =
+                  chatData['chat_name']; // Change this to your chat title field
 
               return ListTile(
-                leading: CircleAvatar(child: Text(chatTitle[0])), // Placeholder for user image
+                leading: CircleAvatar(
+                    child: Text(chatTitle[0])), // Placeholder for user image
                 title: Text(chatTitle),
                 subtitle: Text(lastMessage),
                 trailing: Text(
@@ -66,7 +70,8 @@ class _ChatListPageState extends State<ChatListPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => GroupChatPage(chatId: chatData.id, gChatname: chatTitle),
+                      builder: (context) => GroupChatPage(
+                          chatId: chatData.id, gChatname: chatTitle),
                     ),
                   );
                 },
