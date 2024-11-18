@@ -276,7 +276,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             flex: 5,
             child: Text(
               desc,
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
             ),
           ),
         ],

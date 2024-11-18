@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../maps/incident_report_map.dart';
+import '../mediaViewer/MediaViewerPage.dart';
 
 class FloatingReportWidget extends StatelessWidget {
   final String reportId;
@@ -28,6 +29,32 @@ class FloatingReportWidget extends StatelessWidget {
     if (timestamp == null) return 'N/A';
     final dateTime = timestamp.toDate();
     return DateFormat('MMMM d, y h:mm a').format(dateTime);
+  }
+
+  Color _getSeriousnessColor(String? seriousness) {
+    switch (seriousness?.toLowerCase()) {
+      case 'severe':
+        return Colors.red[700]!;
+      case 'moderate':
+        return Colors.orange[700]!;
+      case 'minor':
+        return Colors.green[700]!;
+      default:
+        return Colors.grey; // Default color for unknown seriousness
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return Colors.blue[700]!;
+      case 'in progress':
+        return Colors.orange[700]!;
+      case 'completed':
+        return Colors.green[700]!;
+      default:
+        return Colors.grey; // Default color for unknown status
+    }
   }
 
   @override
@@ -123,15 +150,15 @@ class FloatingReportWidget extends StatelessWidget {
                     children: [
                       Center(
                         child: ElevatedButton.icon(
-                          onPressed: () async {
+                          onPressed: () {
                             if (mediaUrl != null) {
-                              final uri = Uri.parse(mediaUrl);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri,
-                                    mode: LaunchMode.externalApplication);
-                              } else {
-                                print('Could not launch $mediaUrl');
-                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      MediaViewerPage(mediaUrl: mediaUrl!),
+                                ),
+                              );
                             } else {
                               print('No media URL available');
                             }
@@ -169,8 +196,21 @@ class FloatingReportWidget extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Seriousness: ${report['seriousness']}',
-                    style: TextStyle(fontSize: screenWidth * 0.045),
+                    'Severity: ${report['seriousness']}',
+                    style: TextStyle(
+                        color: _getSeriousnessColor(report['seriousness']),
+                        fontWeight: FontWeight
+                            .bold, // Optional: Highlight based on seriousness
+                        fontSize: screenWidth * 0.045),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Status: ${report['status']}',
+                    style: TextStyle(
+                        color: _getStatusColor(report['status']),
+                        fontWeight: FontWeight
+                            .bold, // Optional: Highlight based on status
+                        fontSize: screenWidth * 0.045),
                   ),
                   SizedBox(height: 8),
                   Text(

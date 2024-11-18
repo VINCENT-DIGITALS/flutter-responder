@@ -19,6 +19,8 @@ class ReportsListPage extends StatefulWidget {
 }
 
 class _ReportsListPageState extends State<ReportsListPage> {
+  TextEditingController _searchController = TextEditingController();
+  String _searchTerm = '';
   bool _isDialogVisible = false;
   bool _isLoading = false; // Loading state
   bool _isAccepting = false; // State for accept button loading
@@ -37,8 +39,15 @@ class _ReportsListPageState extends State<ReportsListPage> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
     _fetchCurrentUserDetails();
     _getCurrentLocation();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchTerm = _searchController.text.toLowerCase();
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -83,8 +92,72 @@ class _ReportsListPageState extends State<ReportsListPage> {
   }
 
   @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _timer?.cancel();
+    super.dispose();
+  }
+Color _getSeriousnessColor(String? seriousness) {
+  switch (seriousness?.toLowerCase()) {
+    case 'severe':
+      return Colors.red[700]!;
+    case 'moderate':
+      return Colors.orange[700]!;
+    case 'minor':
+      return Colors.green[700]!;
+    default:
+      return Colors.grey; // Default color for unknown seriousness
+  }
+}
+
+Color _getStatusColor(String? status) {
+  switch (status?.toLowerCase()) {
+    case 'pending':
+      return Colors.blue[700]!;
+    case 'in progress':
+      return Colors.orange[700]!;
+    case 'completed':
+      return Colors.green[700]!;
+    default:
+      return Colors.grey; // Default color for unknown status
+  }
+}
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back arrow
+        toolbarHeight: 30, // Adjusted to reduce extra space
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(56.0),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search incidents...',
+                      prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200], // Light background color
+                    ),
+                  ),
+                ),
+                // SizedBox(width: 8.0), // Space between search and button
+              ],
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           StreamBuilder<QuerySnapshot>(
@@ -102,13 +175,100 @@ class _ReportsListPageState extends State<ReportsListPage> {
 
               final reports = (snapshot.data?.docs ?? []).where((doc) {
                 var report = doc.data() as Map<String, dynamic>;
-                return report['acceptedBy'] == null ||
-                    !report.containsKey('acceptedBy');
-              }).toList();
 
-              if (reports.isEmpty) {
-                return Center(child: Text('No reports available'));
-              }
+                // Filter reports based on the search term
+                String incidentType =
+                    report['incidentType']?.toLowerCase() ?? '';
+                String incident = report['incident']?.toLowerCase() ?? '';
+                String status = report['status']?.toLowerCase() ?? '';
+                String seriousness = report['seriousness']?.toLowerCase() ?? '';
+
+                // Include only non-archived or not explicitly archived reports
+                bool matchesSearchTerm = incidentType.contains(_searchTerm) ||
+                    incident.contains(_searchTerm) ||
+                    status.contains(_searchTerm) ||
+                    seriousness.contains(_searchTerm);
+
+                return (report['archived'] == null ||
+                        report['archived'] == false) &&
+                    matchesSearchTerm;
+              }).toList();
+              // .where((doc) {
+              //   var report = doc.data() as Map<String, dynamic>;
+              //   return (report['acceptedBy'] == null ||
+              //           !report.containsKey('acceptedBy')) &&
+              //       (report['archived'] == null || report['archived'] == false);
+              // }).toList();
+// Sort: Move reports with acceptedBy == null to the top
+              // Sort reports: By seriousness, acceptedBy, and timestamp
+              reports.sort((a, b) {
+                var reportA = a.data() as Map<String, dynamic>;
+                var reportB = b.data() as Map<String, dynamic>;
+
+                // Determine if reports have 'acceptedBy'
+                bool isAcceptedA = reportA['acceptedBy'] != null;
+                bool isAcceptedB = reportB['acceptedBy'] != null;
+
+                // 1. Reports without 'acceptedBy' come first
+                if (!isAcceptedA && isAcceptedB) return -1; // A goes above B
+                if (isAcceptedA && !isAcceptedB) return 1; // B goes above A
+
+                // 2. For reports without 'acceptedBy', sort by seriousness
+                if (!isAcceptedA && !isAcceptedB) {
+                  final seriousnessPriority = {
+                    'severe': 1,
+                    'moderate': 2,
+                    'minor': 3
+                  };
+                  int seriousnessA = seriousnessPriority[
+                          reportA['seriousness']?.toString().toLowerCase()] ??
+                      4;
+                  int seriousnessB = seriousnessPriority[
+                          reportB['seriousness']?.toString().toLowerCase()] ??
+                      4;
+
+                  if (seriousnessA != seriousnessB) {
+                    return seriousnessA -
+                        seriousnessB; // Lower priority number comes first
+                  }
+
+                  // Tiebreaker: Sort by timestamp (descending)
+                  Timestamp? timestampA = reportA['timestamp'] as Timestamp?;
+                  Timestamp? timestampB = reportB['timestamp'] as Timestamp?;
+                  if (timestampA != null && timestampB != null) {
+                    return timestampB
+                        .compareTo(timestampA); // Newer reports first
+                  }
+                  return 0; // If timestamps are null or equal
+                }
+
+                // 3. For reports with 'acceptedBy', sort by status
+                if (isAcceptedA && isAcceptedB) {
+                  final statusPriority = {'in progress': 1, 'completed': 2};
+                  int statusA = statusPriority[
+                          reportA['status']?.toString().toLowerCase()] ??
+                      3;
+                  int statusB = statusPriority[
+                          reportB['status']?.toString().toLowerCase()] ??
+                      3;
+
+                  if (statusA != statusB) {
+                    return statusA -
+                        statusB; // Lower priority number comes first
+                  }
+
+                  // Tiebreaker: Sort by timestamp (descending)
+                  Timestamp? timestampA = reportA['timestamp'] as Timestamp?;
+                  Timestamp? timestampB = reportB['timestamp'] as Timestamp?;
+                  if (timestampA != null && timestampB != null) {
+                    return timestampB
+                        .compareTo(timestampA); // Newer reports first
+                  }
+                  return 0; // If timestamps are null or equal
+                }
+
+                return 0; // Default case if all other checks fail
+              });
 
               return ListView.builder(
                 padding: const EdgeInsets.all(16.0),
@@ -162,8 +322,22 @@ class _ReportsListPageState extends State<ReportsListPage> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Seriousness: ${report['seriousness']}',
-                            style: TextStyle(color: Colors.red[600]),
+                            'Severity: ${report['seriousness']}',
+                            style: TextStyle(
+                              color:
+                                  _getSeriousnessColor(report['seriousness']),
+                              fontWeight: FontWeight
+                                  .bold, // Optional: Highlight based on seriousness
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Status: ${report['status']}',
+                            style: TextStyle(
+                              color: _getStatusColor(report['status']),
+                              fontWeight: FontWeight
+                                  .bold, // Optional: Highlight based on status
+                            ),
                           ),
                           if (isAccepted)
                             Padding(
@@ -276,7 +450,40 @@ class _ReportsListPageState extends State<ReportsListPage> {
     });
   }
 
+  Future<bool> _showConfirmationPrompt(
+      BuildContext context, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirmation'),
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false), // Cancel
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true), // Confirm
+                  child: const Text('Confirm'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false; // Default to false if dialog is dismissed
+  }
+
   Future<void> _acceptReport() async {
+    // Show confirmation dialog before proceeding
+    bool shouldProceed = await _showConfirmationPrompt(
+      context,
+      "Are you sure you want to accept this report?",
+    );
+
+    if (!shouldProceed) {
+      return; // Exit if user cancels
+    }
     setState(() {
       _isAccepting = true; // Start loading when accepting report
     });
@@ -414,11 +621,5 @@ class _ReportsListPageState extends State<ReportsListPage> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 }

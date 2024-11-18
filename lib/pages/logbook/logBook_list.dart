@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/database.dart';
 import '../../services/location_service.dart';
 import '../maps/incident_report_map.dart';
+import '../mediaViewer/MediaViewerPage.dart';
 import 'add_new_log.dart';
 import 'logBook_edit_widget.dart';
 
@@ -112,7 +113,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search incidents...',
+                      hintText: 'Search Logs...',
                       prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
                       contentPadding: EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(
@@ -200,10 +201,17 @@ class _LogBookListPageState extends State<LogBookListPage> {
             String incidentType = logbook['incidentType'].toLowerCase();
             String incident = logbook['incident'].toLowerCase();
             String status = logbook['status']?.toLowerCase() ?? '';
+            String scam = logbook['scam']?.toLowerCase() ?? '';
+            String seriousness = logbook['scam']?.toLowerCase() ?? '';
+            // Check if the 'archived' field exists and its value is true
+            bool isArchived = logbook['archived'] == true;
 
-            return incidentType.contains(_searchTerm) ||
-                incident.contains(_searchTerm) ||
-                status.contains(_searchTerm);
+            return !isArchived &&
+                (incidentType.contains(_searchTerm) ||
+                    incident.contains(_searchTerm) ||
+                    seriousness.contains(_searchTerm) ||
+                    status.contains(_searchTerm) ||
+                    scam.contains(_searchTerm));
           }).toList();
 
           return ListView.builder(
@@ -278,8 +286,33 @@ class _LogBookListPageState extends State<LogBookListPage> {
                       ),
                       SizedBox(height: 10),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [],
+                        mainAxisAlignment: MainAxisAlignment
+                            .start, // Align the Row content to the left
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _getSeriousnessColor(
+                                  logbook['seriousness'] ?? 'Minor'),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning,
+                                    color: Colors.white, size: 16),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Severity: ${logbook['seriousness'] ?? 'Minor'}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 10),
                       Row(
@@ -302,7 +335,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                                       color: Colors.white, size: 12),
                                   SizedBox(width: 4),
                                   Text(
-                                    'Legitimacy: ${logbook['scam'] ?? 'Pending'}',
+                                    'Legit: ${logbook['scam'] ?? 'Pending'}',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -350,15 +383,15 @@ class _LogBookListPageState extends State<LogBookListPage> {
                               visible: mediaUrl !=
                                   null, // Show button only if mediaUrl is not null
                               child: ElevatedButton.icon(
-                                onPressed: () async {
+                                onPressed: () {
                                   if (mediaUrl != null) {
-                                    final uri = Uri.parse(mediaUrl);
-                                    if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri,
-                                          mode: LaunchMode.externalApplication);
-                                    } else {
-                                      print('Could not launch $mediaUrl');
-                                    }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => MediaViewerPage(
+                                            mediaUrl: mediaUrl!),
+                                      ),
+                                    );
                                   } else {
                                     print('No media URL available');
                                   }
@@ -450,5 +483,18 @@ class _LogBookListPageState extends State<LogBookListPage> {
       default:
         return Colors.grey;
     }
+  }
+}
+
+Color _getSeriousnessColor(String? seriousness) {
+  switch (seriousness?.toLowerCase()) {
+    case 'severe':
+      return Colors.red[700]!;
+    case 'moderate':
+      return Colors.orange[700]!;
+    case 'minor':
+      return Colors.green[700]!;
+    default:
+      return Colors.grey; // Default color for unknown seriousness
   }
 }

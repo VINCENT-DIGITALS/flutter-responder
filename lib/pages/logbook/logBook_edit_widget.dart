@@ -236,7 +236,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
       // If a timeout occurs, notify the user and keep the local save
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-            'Network timeout. Data saved locally; Upload it again later. ${e}'),
+            'Network timeout. Data saved locally; Upload it again later. '),
         backgroundColor: Colors.green,
       ));
       widget.onSave(); // Callback to notify parent widget
@@ -384,7 +384,7 @@ class _FloatingLogBookEditWidgetState extends State<FloatingLogBookEditWidget>
                     }),
                     SizedBox(height: 12),
                     // Status Dropdown
-                    buildDropdownField('Seriousness',
+                    buildDropdownField('Severity',
                         ['Minor', 'Moderate', 'Severe'], _seriousness, (val) {
                       setState(() {
                         _seriousness = val ?? 'Minor';

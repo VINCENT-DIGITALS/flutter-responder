@@ -88,7 +88,7 @@ class AboutCdrrmoPage extends StatelessWidget {
                     SizedBox(height: 16),
                     Text(
                       LocaleData.aboutCDRRMOGuideDesc.getString(context),
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
                     ),
                   ],
                 ),
@@ -114,7 +114,7 @@ class AboutCdrrmoPage extends StatelessWidget {
                     ),
                     Text(
                       LocaleData.aboutAppMissionDesc.getString(context),
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     SizedBox(height: 20),
                     Text(
@@ -124,7 +124,7 @@ class AboutCdrrmoPage extends StatelessWidget {
                     ),
                     Text(
                       LocaleData.aboutCDRRMOVissionDesc.getString(context),
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
                     ),
                   ],
                 ),
