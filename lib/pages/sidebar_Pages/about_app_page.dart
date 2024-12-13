@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:flutter_localization/flutter_localization.dart';
-
 import '../../localization/locales.dart';
-
 
 class AboutAppPage extends StatefulWidget {
   @override
@@ -113,8 +111,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
                     Text(
                       LocaleData.aboutAppguide.getString(context),
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),                     ),
                     SizedBox(height: 10),
                     Text(
                       LocaleData.aboutAppguideDesc.getString(context),
@@ -124,7 +121,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
                     Text(
                       LocaleData.aboutAppKeyfeatures.getString(context),
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     SizedBox(height: 10),
                     Text(
@@ -135,7 +132,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
                     Text(
                       LocaleData.aboutAppMission.getString(context),
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     SizedBox(height: 10),
                     Text(
@@ -146,12 +143,12 @@ class _AboutAppPageState extends State<AboutAppPage> {
                     Text(
                       LocaleData.aboutAppContactUs.getString(context),
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     SizedBox(height: 10),
                     Text(
                       'For feedback, suggestions, or assistance, please reach out to us at:\n'
-                      'Email: \n'
+                      'Email: support\n'
                       'Phone: +63\n'
                       'Address: Muñoz CDRRMO Rescue\nEmergency Operation Center, Science City of Muñoz, 3120 Nueva Ecija',
                       style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
@@ -190,21 +187,21 @@ class _AboutAppPageState extends State<AboutAppPage> {
                                         ImageDialogContent(
                                           imagePath: 'assets/images/30.png',
                                           name: "John Vincent T. Macayanan",
-                                          role: "Developer",
+                                          role: LocaleData.developer.getString(context),
                                           textScaleFactor:
                                               screenSize.width > 600 ? 1.2 : 0.8,
                                         ),
                                         ImageDialogContent(
                                           imagePath: 'assets/images/32.png',
                                           name: "Noaim U. Piti-ilan",
-                                          role: "Team Leader",
+                                          role: LocaleData.projectleader.getString(context),
                                           textScaleFactor:
                                               screenSize.width > 600 ? 1.2 : 0.8,
                                         ),
                                         ImageDialogContent(
                                           imagePath: 'assets/images/31.png',
                                           name: "Kyle Timothy D.P. Masinas",
-                                          role: "Documentation Specialist/QA Tester",
+                                          role: LocaleData.documentationTester.getString(context),
                                           textScaleFactor:
                                               screenSize.width > 600 ? 1.2 : 0.8,
                                         ),
@@ -228,8 +225,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(16.0),
                                     child: Text(
-                                      "This application was created by a dedicated team of BSIT students. "
-                                      "Initially developed as a capstone project, it also serves as a step toward building the next-generation Emergency Response App.",
+                                     LocaleData.meetTheCreatorsdesc.getString(context),
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 16,
@@ -267,7 +263,7 @@ class _AboutAppPageState extends State<AboutAppPage> {
                 },
                 icon: Icon(Icons.info, color: Colors.white),
                 label: Text(
-                  "Meet the Creators",
+                  LocaleData.meetTheCreators.getString(context),
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),

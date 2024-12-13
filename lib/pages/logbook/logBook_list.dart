@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_localization/flutter_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:responder/services/shared_pref.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../localization/locales.dart';
 import '../../services/database.dart';
 import '../../services/location_service.dart';
 import '../maps/incident_report_map.dart';
@@ -158,7 +160,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                           Icon(Icons.add, color: Colors.white),
                           SizedBox(width: 4.0),
                           Text(
-                            'New',
+                            LocaleData.New.getString(context),
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -270,7 +272,8 @@ class _LogBookListPageState extends State<LogBookListPage> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Description: ${logbook['incidentDesc'] != null && logbook['incidentDesc'].length > 50 ? logbook['incidentDesc'].substring(0, 50) + '...' : logbook['incidentDesc'] ?? 'No description available'}',
+                        LocaleData.Description.getString(context) +
+                            ': ${logbook['incidentDesc'] != null && logbook['incidentDesc'].length > 50 ? logbook['incidentDesc'].substring(0, 50) + '...' : logbook['incidentDesc'] ?? 'No description available'}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -278,7 +281,8 @@ class _LogBookListPageState extends State<LogBookListPage> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Created At: ${_formatTimestamp(logbook['timestamp'])}',
+                        LocaleData.CreatedAt.getString(context) +
+                            ': ${_formatTimestamp(logbook['timestamp'])}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
@@ -289,23 +293,47 @@ class _LogBookListPageState extends State<LogBookListPage> {
                         mainAxisAlignment: MainAxisAlignment
                             .start, // Align the Row content to the left
                         children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: _getSeriousnessColor(
-                                  logbook['seriousness'] ?? 'Minor'),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.warning,
+                                color: _getSeriousnessColor(
+                                    logbook['seriousness'] ?? 'Minor'),
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                LocaleData.severity.getString(context) +
+                                    ': ${logbook['seriousness'] ?? 'Minor'}',
+                                style: TextStyle(
+                                  color: _getSeriousnessColor(
+                                      logbook['seriousness'] ?? 'Minor'),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment
+                            .spaceBetween, // Spread children apart
+                        children: [
+                          Expanded(
                             child: Row(
                               children: [
-                                Icon(Icons.warning,
-                                    color: Colors.white, size: 16),
+                                Icon(Icons.circle,
+                                    color: _getStatusColor(
+                                        logbook['scam'] ?? 'Pending'),
+                                    size: 12),
                                 SizedBox(width: 4),
                                 Text(
-                                  'Severity: ${logbook['seriousness'] ?? 'Minor'}',
+                                  LocaleData.Legit.getString(context) +
+                                      ': ${logbook['scam'] ?? 'Pending'}',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: _getStatusColor(
+                                        logbook['scam'] ?? 'Pending'),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -320,55 +348,23 @@ class _LogBookListPageState extends State<LogBookListPage> {
                             .spaceBetween, // Spread children apart
                         children: [
                           Expanded(
-                            // Wrap each child in Expanded to take up available space
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                    logbook['scam'] ?? 'Pending'),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.circle,
-                                      color: Colors.white, size: 12),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Legit: ${logbook['scam'] ?? 'Pending'}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.circle,
+                                    color: _getStatusColor(
+                                        logbook['status'] ?? 'Pending'),
+                                    size: 12),
+                                SizedBox(width: 4),
+                                Text(
+                                  LocaleData.status.getString(context) +
+                                      ': ${logbook['status'] ?? 'Pending'}',
+                                  style: TextStyle(
+                                    color: _getStatusColor(
+                                        logbook['status'] ?? 'Pending'),
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8), // Adjust this spacing if needed
-                          Expanded(
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                    logbook['status'] ?? 'Pending'),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.circle,
-                                      color: Colors.white, size: 12),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Status: ${logbook['status'] ?? 'Pending'}',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -399,7 +395,7 @@ class _LogBookListPageState extends State<LogBookListPage> {
                                 icon: const Icon(Icons.open_in_new,
                                     color: Colors.white),
                                 label: const Text(
-                                  ' Media',
+                                  'Media',
                                   style: TextStyle(color: Colors.white),
                                 ),
                                 style: ElevatedButton.styleFrom(
@@ -475,11 +471,14 @@ class _LogBookListPageState extends State<LogBookListPage> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'In Progress':
-        return Colors.orange;
       case 'Completed':
         return Colors.green;
       case 'Pending':
+        return Colors.orange;
+      case 'Scam':
         return Colors.red;
+      case 'Legit':
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -489,11 +488,11 @@ class _LogBookListPageState extends State<LogBookListPage> {
 Color _getSeriousnessColor(String? seriousness) {
   switch (seriousness?.toLowerCase()) {
     case 'severe':
-      return Colors.red[700]!;
+      return Colors.red;
     case 'moderate':
-      return Colors.orange[700]!;
+      return Colors.orange;
     case 'minor':
-      return Colors.green[700]!;
+      return Colors.green;
     default:
       return Colors.grey; // Default color for unknown seriousness
   }

@@ -1,9 +1,10 @@
+import '../components/bottom_bar.dart';
+import '../components/custom_drawer.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localization/flutter_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../components/bottom_bar.dart';
-import '../components/custom_drawer.dart';
+
 import '../localization/locales.dart';
 
 class HotlineDirectoriesPage extends StatelessWidget {
@@ -15,9 +16,8 @@ class HotlineDirectoriesPage extends StatelessWidget {
       child: Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
-          title: Text(
-            LocaleData.hotlineDirectories.getString(context),
-          ),
+          title: Text(LocaleData.hotlineDirectories
+                              .getString(context),),
           shadowColor: Colors.black,
           elevation: 2.0,
         ),
@@ -51,22 +51,22 @@ class HotlineDirectoriesPage extends StatelessWidget {
               iconColor: Colors.orange,
               title: 'OsLAM',
               subtitle:
-                  'Ospital ng Lungsod Agham ng Muñoz (OsLAM) (AVAILABLE 24/7)Purok Cabiawan, Brgy. Rizal, Science City of Muñoz, Nueva Ecija',
-              telNo: '(044) 511 6234',
-              phoneNumbers: {'DITO': '0993 994 0748'},
+                  'Ospital ng Lungsod Agham ng Muñoz (OsLAM) (AVAILABLE 24/7), Science City of Muñoz, Nueva Ecija',
+              telNo: '(044) 940 6886',
+              phoneNumbers: {},
               email: 'oslamscm@gmail.com',
               fbPage: 'https://web.facebook.com/OsLAMunoz',
             ),
-            SizedBox(height: 20),
-            HotlineCard(
-              iconColor: Colors.green,
-              title: 'CHO',
-              subtitle: 'City Health Office (8:00AM-4:00PM Monday-Friday)',
-              telNo: '(044) 940 6886',
-              phoneNumbers: {},
-              email: '',
-              fbPage: 'https://web.facebook.com/Munoz.CityHealthOffice',
-            ),
+            // SizedBox(height: 20),
+            // HotlineCard(
+            //   iconColor: Colors.green,
+            //   title: 'CHO',
+            //   subtitle: 'City Health Office (8:00AM-4:00PM Monday-Friday)',
+            //   telNo: '(044) 940 6886',
+            //   phoneNumbers: {},
+            //   email: '',
+            //   fbPage: 'https://web.facebook.com/Munoz.CityHealthOffice',
+            // ),
             SizedBox(height: 20),
             HotlineCard(
               iconColor: Colors.purple,
@@ -74,7 +74,7 @@ class HotlineDirectoriesPage extends StatelessWidget {
               subtitle:
                   'Bureau of Fire Protection (BFP) - Muñoz Station (AVAILABLE 24/7)',
               telNo: '(044) 456 5893',
-              phoneNumbers: {'SUN': '0922 735 9848'},
+              phoneNumbers: {'SUN': '0922 735 9848','GLOBE':'0977 776 9802'},
               email: 'almasiganebfp@yahoo.com',
               fbPage: 'https://web.facebook.com/profile.php?id=100064633845833',
             ),
@@ -90,24 +90,24 @@ class HotlineDirectoriesPage extends StatelessWidget {
             ),
             SizedBox(height: 20),
             HotlineCard(
-              iconColor: Colors.red,
+              iconColor: Colors.red,  
               title: 'PNP',
               subtitle: 'Science City of Muñoz PNP Station',
-              telNo: '(044) 456 0104',
-              phoneNumbers: {'TM': '0915 599 1424', 'TNT': '0998 596 5417'},
+              telNo: '(044) 511 6234',
+              phoneNumbers: {'TM': '0915 599 1424'},
               email: '',
               fbPage: 'https://web.facebook.com/profile.php?id=100063768863589',
             ),
-            SizedBox(height: 20),
-            HotlineCard(
-              iconColor: Colors.red,
-              title: 'CLSU Infirmary',
-              subtitle: 'Central Luzon State University Infirmary',
-              telNo: '(044) 456 0104',
-              phoneNumbers: {'TNT': '0938 126 9326', 'GLOBE': '0926 565 1830'},
-              email: '',
-              fbPage: '',
-            ),
+            // SizedBox(height: 20),
+            // HotlineCard(
+            //   iconColor: Colors.red,
+            //   title: 'CLSU Infirmary',
+            //   subtitle: 'Central Luzon State University Infirmary',
+            //   telNo: '(044) 456 0104',
+            //   phoneNumbers: {'TNT': '0938 126 9326', 'GLOBE': '0926 565 1830'},
+            //   email: '',
+            //   fbPage: '',
+            // ),
           ],
         ),
         bottomNavigationBar: BottomNavBar(currentPage: 'Hotlines'),
@@ -255,8 +255,7 @@ class _HotlineCardState extends State<HotlineCard> {
             if (isSimType)
               TextSpan(
                 text: '$label: ',
-                style:
-                    TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
               ),
             TextSpan(
               text: showLinkText ? label : value,

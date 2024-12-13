@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_localization/flutter_localization.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../../localization/locales.dart';
 import '../../services/location_service copy.dart';
 import '../logbook/logbook_widgets/buildTextField.dart';
 import '../../services/database.dart';
@@ -218,7 +220,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'New LogBook',
+               LocaleData.NewLogbook.getString(context),
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
@@ -235,7 +237,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Incident Information',
+                       LocaleData.incidentInfo.getString(context),
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
@@ -243,31 +245,31 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
 
                     // Display Created At and Updated At timestamps
                     Text(
-                      'Created At: ${_formatTimestamp(_timestamp)}',
+                       LocaleData.CreatedAt.getString(context)+': ${_formatTimestamp(_timestamp)}',
                       style: TextStyle(
                           color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Last Updated At: ${_formatTimestamp(_updatedAt)}',
+                       LocaleData.LastUpdatedAt.getString(context)+': ${_formatTimestamp(_updatedAt)}',
                       style: TextStyle(
                           color: const Color.fromARGB(255, 0, 0, 0),
                           fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 12),
-                    buildTextField('Reporter Name', reporterNameController),
+                    buildTextField( LocaleData.ReporterName.getString(context), reporterNameController),
                     SizedBox(height: 12),
-                    buildAddressTextField('Address', _addressController),
+                    buildAddressTextField( LocaleData.Address.getString(context), _addressController),
                     SizedBox(height: 12),
-                    buildTextField('Landmark', _landmarkController),
+                    buildTextField( LocaleData.landmark.getString(context), _landmarkController),
                     SizedBox(height: 12),
-                    buildTextField('# of Injured', _injuredCountController),
+                    buildTextField( LocaleData.NoOfInjured.getString(context), _injuredCountController),
                     SizedBox(height: 12),
                     buildTextField('Transported To', _transportedToController),
                     SizedBox(height: 12),
                     // Status Dropdown
-                    buildDropdownField('Seriousness',
+                    buildDropdownField( LocaleData.severity.getString(context),
                         ['Minor', 'Moderate', 'Severe'], _seriousness, (val) {
                       setState(() {
                         _seriousness = val ?? 'Minor';
@@ -276,31 +278,31 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                     SizedBox(height: 12),
                     // Status Dropdown
                     buildDropdownField(
-                        'Status', ['In Progress', 'Completed'], _status, (val) {
+                         LocaleData.status.getString(context), ['In Progress', 'Completed'], _status, (val) {
                       setState(() {
                         _status = val ?? 'In Progress';
                       });
                     }),
                     SizedBox(height: 12),
                     buildDropdownField(
-                        'Legibility', ['Pending', 'Scam', 'Legit'], _scam,
+                        'Legitimacy', ['Pending', 'Scam', 'Legit'], _scam,
                         (val) {
                       setState(() {
                         _scam = val ?? 'Pending';
                       });
                     }),
                     SizedBox(height: 12),
-                    buildTextField('Incident Type', _incidentTypeController),
+                    buildTextField( LocaleData.incidenttype.getString(context), _incidentTypeController),
                     SizedBox(height: 12),
                     buildTextField(
-                      'Incident',
+                       LocaleData.Incident.getString(context),
                       _incidentController,
                       minLines: 3,
                       maxLines: null,
                     ),
                     SizedBox(height: 12),
                     buildTextField(
-                      'Incident Description',
+                       LocaleData.IncidentDescription.getString(context),
                       _incidentDescController,
                       minLines: 3,
                       maxLines: null,
@@ -324,7 +326,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Vehicles Involved',
+                       LocaleData.VehiclesInvolved.getString(context),
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
@@ -408,7 +410,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                     ElevatedButton.icon(
                       onPressed: _addVehicle,
                       icon: Icon(Icons.add),
-                      label: Text('Add Vehicle'),
+                      label: Text( LocaleData.AddVehicle.getString(context)),
                       style: ElevatedButton.styleFrom(
                         padding:
                             EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -436,7 +438,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Victims',
+                       LocaleData.Victims.getString(context),
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
@@ -480,19 +482,19 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                                   ),
                                   SizedBox(height: 12),
                                   buildTextField(
-                                    'Name',
+                                     LocaleData.Name.getString(context),
                                     TextEditingController(text: victim['name']),
                                     onChanged: (val) => victim['name'] = val,
                                   ),
                                   SizedBox(height: 12),
                                   buildTextField(
-                                    'Age',
+                                     LocaleData.Age.getString(context),
                                     TextEditingController(text: victim['age']),
                                     onChanged: (val) => victim['age'] = val,
                                   ),
                                   SizedBox(height: 12),
                                   buildDropdownField(
-                                    'Sex',
+                                     LocaleData.Sex.getString(context),
                                     ['Male', 'Female', 'Other'],
                                     victim['sex'],
                                     (val) =>
@@ -500,21 +502,21 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                                   ),
                                   SizedBox(height: 12),
                                   buildTextField(
-                                    'Address',
+                                     LocaleData.Address.getString(context),
                                     TextEditingController(
                                         text: victim['address']),
                                     onChanged: (val) => victim['address'] = val,
                                   ),
                                   SizedBox(height: 12),
                                   buildTextField(
-                                    'Injury',
+                                     LocaleData.Injury.getString(context),
                                     TextEditingController(
                                         text: victim['injury']),
                                     onChanged: (val) => victim['injury'] = val,
                                   ),
                                   SizedBox(height: 12),
                                   buildDropdownField(
-                                    'lifeStatus', // New dropdown for condition
+                                     LocaleData.LifeStatus.getString(context), // New dropdown for condition
                                     ['Injured', 'Dead'],
                                     victim['lifeStatus'],
                                     (val) => setState(
@@ -532,7 +534,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
                     ElevatedButton.icon(
                       onPressed: _addVictim,
                       icon: Icon(Icons.add),
-                      label: Text('Add Victim'),
+                      label: Text( LocaleData.AddVictim.getString(context)),
                       style: ElevatedButton.styleFrom(
                         padding:
                             EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -750,7 +752,7 @@ class _FloatingNewLogBookWidgetState extends State<FloatingNewLogBookWidget>
       readOnly: true, // Disable typing
       decoration: InputDecoration(
         hintText: 'Click the icon to find location',
-        labelText: 'This is your current address',
+        labelText:  LocaleData.yourcurrentaddress.getString(context),
         border: OutlineInputBorder(),
         filled: true,
         floatingLabelBehavior:

@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
@@ -81,36 +82,49 @@ class _LoginPageState extends State<LoginPage>
     // LoadingIndicatorDialog().show(context);
 
     try {
-      String? result = await _dbService.signInWithEmail(
-        emailController.text,
-        passwordController.text,
-      );
-
-      if (result != null) {
-        // Show error message or email verification message
-        Fluttertoast.showToast(
-          msg: result,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-        );
+      final List<ConnectivityResult> connectivityResult =
+          await Connectivity().checkConnectivity();
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+         // Show error message or email verification message
+          Fluttertoast.showToast(
+            msg: 'Slow or No internet connection, Please try again.',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.redAccent,
+            textColor: Colors.white,
+          );
       } else {
-        // Fluttertoast.showToast(
-        //   msg: 'Login Success, Redirecting...',
-        //   toastLength: Toast.LENGTH_SHORT,
-        //   gravity: ToastGravity.BOTTOM,
-        //   backgroundColor: Colors.green,
-        //   textColor: Colors.white,
-        // );
-
-        // Delay for user experience
-        await Future.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AuthPage()),
+        String? result = await _dbService.signInWithEmail(
+          emailController.text,
+          passwordController.text,
         );
+
+        if (result != null) {
+          // Show error message or email verification message
+          Fluttertoast.showToast(
+            msg: result,
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.redAccent,
+            textColor: Colors.white,
+          );
+        } else {
+          // Fluttertoast.showToast(
+          //   msg: 'Login Success, Redirecting...',
+          //   toastLength: Toast.LENGTH_SHORT,
+          //   gravity: ToastGravity.BOTTOM,
+          //   backgroundColor: Colors.green,
+          //   textColor: Colors.white,
+          // );
+
+          // Delay for user experience
+          await Future.delayed(const Duration(seconds: 2));
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AuthPage()),
+          );
+        }
       }
     } finally {
       // LoadingIndicatorDialog().dismiss();
@@ -560,8 +574,9 @@ class _LoginPageState extends State<LoginPage>
                                           ? const CircularProgressIndicator(
                                               color: Colors
                                                   .white) // Loading indicator
-                                          :  Text(
-                                               LocaleData.signInTextT.getString(context),
+                                          : Text(
+                                              LocaleData.signInTextT
+                                                  .getString(context),
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
@@ -572,7 +587,7 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                 ],
                               ),
-                              
+
                               // Padding(
                               //   padding: const EdgeInsetsDirectional.fromSTEB(
                               //       0, 10, 0, 0),

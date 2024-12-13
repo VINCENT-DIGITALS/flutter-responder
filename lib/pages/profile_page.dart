@@ -186,12 +186,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const SizedBox(height: 8),
                             _buildProfileInfoRow(
-                              title: 'Email',
-                              controller: emailController,
-                              content:
-                                  _userData['email'] ?? 'No email available',
-                              hidden: false,
-                            ),
+                                title: 'Email',
+                                controller: emailController,
+                                content:
+                                    _userData['email'] ?? 'No email available',
+                                hidden: false,
+                                isEmail: true),
                             const SizedBox(height: 8),
                             _buildProfileInfoRow(
                               title: 'Phone Number',
@@ -340,13 +340,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileInfoRow({
-    required String title,
-    required TextEditingController controller,
-    required String content,
-    required bool hidden,
-    VoidCallback? onRevealPressed,
-  }) {
+  Widget _buildProfileInfoRow(
+      {required String title,
+      required TextEditingController controller,
+      required String content,
+      required bool hidden,
+      VoidCallback? onRevealPressed,
+      isEmail = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -55,7 +55,7 @@ class MentalHealthPage extends StatelessWidget {
                   image: DecorationImage(
                     image: AssetImage(
                         'assets/images/MentalHealth/MentalHealthAwareness.png'), // Replace with actual image path
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),

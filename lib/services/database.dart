@@ -7,7 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:responder/services/shared_pref.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:http/http.dart' as http;
 import '../api/firebase_api.dart';
 import '../pages/login_page.dart';
 
@@ -29,6 +29,7 @@ class DatabaseService {
       await user.sendEmailVerification();
     }
   }
+
   Future<void> saveFcmToken(String userId) async {
     try {
       final FirebaseApi firebaseApi = FirebaseApi();
@@ -307,32 +308,33 @@ class DatabaseService {
   }
 
 // Fetch announcements as a stream from Firestore where archived is false
-Stream<List<Map<String, dynamic>>> getAnnouncementsStream() {
-  return _db
-      .collection('announcements')
-      .where('archived', isEqualTo: false) // Filter archived items
-      .orderBy('timestamp', descending: true)
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList());
-}
+  Stream<List<Map<String, dynamic>>> getAnnouncementsStream() {
+    return _db
+        .collection('announcements')
+        .where('archived', isEqualTo: false) // Filter archived items
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList());
+  }
 
-Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int limit = 3}) {
-  return _db
-      .collection(collection)
-      .where('archived', isEqualTo: false) // Filter archived items
-      .orderBy('timestamp', descending: true)
-      .limit(limit)
-      .snapshots()
-      .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          data['id'] = doc.id; // Include document ID if needed
-          return data;
-        }).toList();
-      });
-}
+  Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection,
+      {int limit = 3}) {
+    return _db
+        .collection(collection)
+        .where('archived', isEqualTo: false) // Filter archived items
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id; // Include document ID if needed
+        return data;
+      }).toList();
+    });
+  }
 
   // Fetch current weather data from Firestore
   Future<Map<String, dynamic>?> fetchCurrentWeatherData() async {
@@ -351,20 +353,22 @@ Stream<List<Map<String, dynamic>>> getLatestItemsStream(String collection, {int 
     }
   }
 
-Future<List<Map<String, dynamic>>> fetchForecastData() async {
-  try {
-    QuerySnapshot<Map<String, dynamic>> querySnapshot = await _db
-        .collection('weather')  // Assuming 'weather' is your Firestore collection
-        .where(FieldPath.documentId, isNotEqualTo: 'current')  // Exclude the 'current' document
-        .get();
+  Future<List<Map<String, dynamic>>> fetchForecastData() async {
+    try {
+      QuerySnapshot<Map<String, dynamic>> querySnapshot = await _db
+          .collection(
+              'weather') // Assuming 'weather' is your Firestore collection
+          .where(FieldPath.documentId,
+              isNotEqualTo: 'current') // Exclude the 'current' document
+          .get();
 
-    // Convert the query snapshot into a list of maps (documents data)
-    return querySnapshot.docs.map((doc) => doc.data()).toList();
-  } catch (e) {
-    print('Error fetching forecast data: $e');
-    return [];
+      // Convert the query snapshot into a list of maps (documents data)
+      return querySnapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error fetching forecast data: $e');
+      return [];
+    }
   }
-}
 
   // Method to update specific fields of the current user document
   Future<void> updateUserData({
@@ -679,6 +683,31 @@ Future<List<Map<String, dynamic>>> fetchForecastData() async {
     }
   }
 
+  Future<String> checkInternetSpeed() async {
+    final url = Uri.parse('https://www.google.com');
+
+    try {
+      final stopwatch = Stopwatch()..start();
+      final response = await http.get(url);
+      stopwatch.stop();
+
+      if (response.statusCode == 200) {
+        final pingTime = stopwatch.elapsedMilliseconds;
+        if (pingTime < 100) {
+          return 'Fast';
+        } else if (pingTime < 300) {
+          return 'Moderate';
+        } else {
+          return 'Slow';
+        }
+      } else {
+        return 'unstable';
+      }
+    } catch (e) {
+      return 'Failed to measure';
+    }
+  }
+
 // Sign in with email and password (Only for authorized users)
   Future<String?> signInWithEmail(String email, String password) async {
     try {
@@ -690,8 +719,24 @@ Future<List<Map<String, dynamic>>> fetchForecastData() async {
       final docSnapshot = await userDoc.get();
 
       if (docSnapshot.docs.isEmpty) {
+        final netSpeed = await checkInternetSpeed(); // Await the result
+
         // flutterToastError('User document does not exist');
-        return 'Email was not found, Please try again or Sign Up';
+        if (netSpeed == 'Slow') {
+          return 'Slow or No Internet Connection';
+        } else if (netSpeed == 'Moderate') {
+          return 'Moderate Internet';
+        } else if (netSpeed == 'Fast') {
+          return 'Fast Internet';
+        } else if (netSpeed == 'unstable') {
+          return 'Internet connection is unstable or unreachable.';
+        } else if (netSpeed == 'Failed to measure') {
+          return 'Failed to measure internet speed. Please check your connection.';
+        } else if (docSnapshot.docs.isEmpty) {
+          return 'No Record Shown. Please contact the operator';
+        } else {
+          return 'No Record Shown. Please contact the operator';
+        }
       }
 
       final userData = docSnapshot.docs.first.data();
@@ -719,7 +764,8 @@ Future<List<Map<String, dynamic>>> fetchForecastData() async {
         'address': userData['address'] ?? '',
         'type': userData['type'] ?? '',
         'status': userData['status'] ?? '',
-        'privacyPolicyAccepted': userData['privacyPolicyAcceptance'] ?? false,  // Added privacy policy status
+        'privacyPolicyAccepted': userData['privacyPolicyAcceptance'] ??
+            false, // Added privacy policy status
       });
       // Save FCM token
       await saveFcmToken(documentId);

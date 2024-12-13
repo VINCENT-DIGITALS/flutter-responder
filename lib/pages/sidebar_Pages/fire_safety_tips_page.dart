@@ -118,7 +118,8 @@ class FireSafetyTipsPage extends StatelessWidget {
                   SizedBox(height: 10),
                   Text(
                     details,
-                    style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
+                    style: TextStyle(fontSize: 16),
+                     textAlign: TextAlign.justify, // Justify the text here
                   ),
                 ],
               ),

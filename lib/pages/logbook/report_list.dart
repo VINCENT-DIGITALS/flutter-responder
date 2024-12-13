@@ -98,31 +98,32 @@ class _ReportsListPageState extends State<ReportsListPage> {
     _timer?.cancel();
     super.dispose();
   }
-Color _getSeriousnessColor(String? seriousness) {
-  switch (seriousness?.toLowerCase()) {
-    case 'severe':
-      return Colors.red[700]!;
-    case 'moderate':
-      return Colors.orange[700]!;
-    case 'minor':
-      return Colors.green[700]!;
-    default:
-      return Colors.grey; // Default color for unknown seriousness
-  }
-}
 
-Color _getStatusColor(String? status) {
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      return Colors.blue[700]!;
-    case 'in progress':
-      return Colors.orange[700]!;
-    case 'completed':
-      return Colors.green[700]!;
-    default:
-      return Colors.grey; // Default color for unknown status
+  Color _getSeriousnessColor(String? seriousness) {
+    switch (seriousness?.toLowerCase()) {
+      case 'severe':
+        return Colors.red[700]!;
+      case 'moderate':
+        return Colors.orange[700]!;
+      case 'minor':
+        return Colors.green[700]!;
+      default:
+        return Colors.grey; // Default color for unknown seriousness
+    }
   }
-}
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return Colors.blue[700]!;
+      case 'in progress':
+        return Colors.orange[700]!;
+      case 'completed':
+        return Colors.green[700]!;
+      default:
+        return Colors.grey; // Default color for unknown status
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -561,6 +562,7 @@ Color _getStatusColor(String? status) {
                   'viewed': true,
                   'lockedBy': _responderId,
                   'status': 'In Progress',
+                  'updatedAt': FieldValue.serverTimestamp(),
                 },
                 SetOptions(merge: true),
               );

@@ -3,7 +3,6 @@ import 'package:flutter_localization/flutter_localization.dart';
 
 import '../../localization/locales.dart';
 
-
 class AboutCdrrmoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -88,7 +87,8 @@ class AboutCdrrmoPage extends StatelessWidget {
                     SizedBox(height: 16),
                     Text(
                       LocaleData.aboutCDRRMOGuideDesc.getString(context),
-                      style: TextStyle(fontSize: 16), textAlign: TextAlign.justify, // Justify the text here
+                      style: TextStyle(fontSize: 16),
+                       textAlign: TextAlign.justify, // Justify the text here
                     ),
                   ],
                 ),
@@ -110,7 +110,7 @@ class AboutCdrrmoPage extends StatelessWidget {
                     Text(
                       LocaleData.aboutCDRRMOMission.getString(context),
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     Text(
                       LocaleData.aboutAppMissionDesc.getString(context),
@@ -120,7 +120,7 @@ class AboutCdrrmoPage extends StatelessWidget {
                     Text(
                       LocaleData.aboutCDRRMOVission.getString(context),
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.justify, // Justify the text here
                     ),
                     Text(
                       LocaleData.aboutCDRRMOVissionDesc.getString(context),
