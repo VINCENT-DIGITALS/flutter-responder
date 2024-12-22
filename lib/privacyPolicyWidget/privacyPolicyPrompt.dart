@@ -5,7 +5,7 @@ import 'package:flutter_localization/flutter_localization.dart';
 
 import '../localization/locales.dart';
 import '../services/auth.dart';
-
+import '../services/shared_pref.dart';
 
 class PrivacyPolicyDialogPrompt extends StatelessWidget {
   @override
@@ -230,26 +230,39 @@ class PrivacyPolicyDialogPrompt extends StatelessWidget {
     Navigator.of(context).pop();
   }
 
-Future<void> _handleAccept(BuildContext context) async {
-  final user = FirebaseAuth.instance.currentUser;
+  Future<void> _handleAccept(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
 
-  if (user != null) {
-    try {
-      await FirebaseFirestore.instance
-          .collection('responders')
-          .doc(user.uid)
-          .set({'privacyPolicyAcceptance': true}, SetOptions(merge: true));
+    if (user != null) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('responders')
+            .doc(user.uid)
+            .set({'privacyPolicyAcceptance': true}, SetOptions(merge: true));
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AuthPage()),
-      );
-    } catch (e) {
-      // Handle the error if needed
+        SharedPreferencesService prefs =
+            await SharedPreferencesService.getInstance();
+        prefs.saveUserData({
+          'uid': user.uid,
+          'email': user.email ?? '',
+          'displayName': displayName,
+          'photoURL': user.photoURL ?? '',
+          'phoneNum': user.phoneNumber ?? '',
+          'createdAt': DateTime.now().toIso8601String(),
+          'address': '',
+          'type': 'Responder',
+          'status': 'Activated',
+          'privacyPolicyAccepted': true,
+        });
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AuthPage()),
+        );
+      } catch (e) {
+        // Handle the error if needed
+      }
     }
   }
-}
-
 
   Widget buildSectionHeader(BuildContext context, String title) {
     return Text(

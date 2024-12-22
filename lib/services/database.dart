@@ -749,7 +749,19 @@ class DatabaseService {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
       User? user = userCredential.user;
+      if (user == null) {
+        return 'Sign-in failed. Please try again.';
+      }
 
+      // Reload user to get latest email verification status
+      await user.reload();
+
+      if (!user.emailVerified) {
+        user.sendEmailVerification();
+        await _auth.signOut(); // Sign out if email is not verified
+        
+        return 'Email is not verified yet. Please check the email we sent to your email.';
+      }
       // Store user details in SharedPreferences
       SharedPreferencesService prefs =
           await SharedPreferencesService.getInstance();

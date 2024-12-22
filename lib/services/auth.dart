@@ -94,12 +94,13 @@ class _AuthPageState extends State<AuthPage> {
 
       // Check for user data in shared preferences
       bool? isPrivacyPolicyAccepted = prefs.getBool('privacyPolicyAccepted');
+   
       String? userStatus = prefs.getString('status');
 
       if (isPrivacyPolicyAccepted != null && userStatus != null) {
         if (userStatus == 'Deactivated') {
           _showDeactivatedAccountPrompt();
-        } else if (isPrivacyPolicyAccepted) {
+        } else if (isPrivacyPolicyAccepted == true) {
           _navigateToHomePage();
         } else {
           _showPrivacyPolicyDialog(user);
